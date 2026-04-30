@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
+import Link from 'next/link';
 import {
   PlayerError,
   createPlayer,
@@ -157,12 +158,20 @@ export default async function AdminPlayersPage({
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <form action={deletePlayerAction} className="inline">
-                    <input type="hidden" name="id" value={p.id} />
-                    <button className="btn-danger" type="submit">
-                      Supprimer
-                    </button>
-                  </form>
+                  <div className="flex justify-end gap-2">
+                    <Link
+                      href={`/admin/players/${p.id}`}
+                      className="btn-secondary"
+                    >
+                      Modifier
+                    </Link>
+                    <form action={deletePlayerAction} className="inline">
+                      <input type="hidden" name="id" value={p.id} />
+                      <button className="btn-danger" type="submit">
+                        Supprimer
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}

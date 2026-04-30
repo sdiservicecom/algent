@@ -66,6 +66,59 @@ function normalizePhotoUrl(value: string | null | undefined): string | null {
   }
 }
 
+export async function updatePlayer(
+  id: string,
+  input: {
+    firstName?: string;
+    lastName?: string;
+    nickname?: string | null;
+    seed?: number;
+    /** undefined = ne pas toucher, string = remplacer, null = supprimer. */
+    photoUrl?: string | null;
+  },
+): Promise<Player> {
+  const current = await getPlayer(id);
+  if (!current) throw new PlayerError('NOT_FOUND');
+
+  let nextSeed = current.seed;
+  if (input.seed !== undefined && input.seed !== current.seed) {
+    const claimed = await kv.set(
+      K.playerBySeed(input.seed),
+      '__placeholder__',
+      { nx: true },
+    );
+    if (claimed !== 'OK') throw new PlayerError('SEED_TAKEN');
+    await kv.del(K.playerBySeed(current.seed));
+    await kv.zrem(K.playersByseed(), id);
+    await kv.zadd(K.playersByseed(), { score: input.seed, member: id });
+    nextSeed = input.seed;
+  }
+
+  const nextNickname =
+    input.nickname === undefined
+      ? current.nickname
+      : (input.nickname ?? '').trim() || null;
+
+  let nextPhotoUrl = current.photoUrl;
+  if (input.photoUrl !== undefined) {
+    nextPhotoUrl = input.photoUrl === null ? null : normalizePhotoUrl(input.photoUrl);
+  }
+
+  const updated: Player = {
+    ...current,
+    firstName: input.firstName?.trim() ?? current.firstName,
+    lastName: input.lastName?.trim() ?? current.lastName,
+    nickname: nextNickname,
+    seed: nextSeed,
+    photoUrl: nextPhotoUrl,
+  };
+
+  await kv.set(K.player(id), updated);
+  await kv.set(K.playerBySeed(nextSeed), id);
+
+  return updated;
+}
+
 export async function deletePlayer(id: string): Promise<void> {
   const player = await getPlayer(id);
   if (!player) throw new PlayerError('NOT_FOUND');
