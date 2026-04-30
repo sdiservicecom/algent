@@ -88,3 +88,23 @@ export interface OddsSnapshot {
   reason: string;
   createdAt: string;
 }
+
+export type TournamentStatus = 'OPEN' | 'LOCKED' | 'SETTLED' | 'CANCELLED';
+
+export interface Tournament {
+  status: TournamentStatus;
+  winnerId: string | null;
+}
+
+export interface TournamentBet {
+  id: string;
+  userId: string;
+  pickedPlayerId: string;
+  stake: number;
+  oddsAtBet: number;
+  status: BetStatus;
+  potentialWin: number;
+  payout: number | null;
+  placedAt: string;
+  settledAt: string | null;
+}

@@ -160,7 +160,7 @@ export default async function AdminMatchDetailPage({
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Paris ({bets.length})</h2>
-        <div className="card overflow-hidden p-0">
+        <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">

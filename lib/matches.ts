@@ -2,7 +2,9 @@ import { K, kv, newId } from './kv';
 import { computeInitialOdds } from './odds';
 import type { Bet, Match, MatchStatus, OddsSnapshot } from './types';
 import { getPlayer } from './players';
+import { notifyUser } from './push';
 import { applyWalletDelta } from './wallet';
+import { fmtPlayerName } from './format';
 
 export class MatchError extends Error {
   constructor(
@@ -109,6 +111,15 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
   const pendingIds = await kv.smembers(K.pendingBetsByMatch(matchId));
   const ids = (pendingIds ?? []) as string[];
 
+  const [winner, pa, pb] = await Promise.all([
+    getPlayer(winnerId),
+    getPlayer(match.playerAId),
+    getPlayer(match.playerBId),
+  ]);
+  const matchLabel = pa && pb ? `${fmtPlayerName(pa)} vs ${fmtPlayerName(pb)}` : 'votre match';
+  const winnerLabel = winner ? fmtPlayerName(winner) : 'le vainqueur';
+  const notifications: Array<Promise<void>> = [];
+
   for (const betId of ids) {
     const bet = await kv.get<Bet>(K.bet(betId));
     if (!bet || bet.status !== 'PENDING') continue;
@@ -127,6 +138,14 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
         betId,
         matchId,
       });
+      notifications.push(
+        notifyUser(bet.userId, {
+          title: '🎉 Pari gagné',
+          body: `${matchLabel} — ${winnerLabel} l'emporte. +${payout} pts crédités.`,
+          url: '/history',
+          tag: `bet-${betId}`,
+        }),
+      );
     } else {
       const updated: Bet = {
         ...bet,
@@ -136,6 +155,14 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
       };
       await kv.set(K.bet(betId), updated);
       await applyWalletDelta(bet.userId, 0, 'BET_LOST', { betId, matchId });
+      notifications.push(
+        notifyUser(bet.userId, {
+          title: 'Pari perdu',
+          body: `${matchLabel} — ${winnerLabel} l'emporte. Mise de ${bet.stake} pts perdue.`,
+          url: '/history',
+          tag: `bet-${betId}`,
+        }),
+      );
     }
 
     // Libère les guards uniquement après transition
@@ -146,6 +173,7 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
   }
 
   await kv.hset(K.match(matchId), { status: 'SETTLED', winnerId });
+  await Promise.allSettled(notifications);
 }
 
 export async function cancelMatch(matchId: string): Promise<void> {

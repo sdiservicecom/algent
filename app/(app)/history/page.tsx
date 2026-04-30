@@ -35,7 +35,7 @@ export default async function HistoryPage() {
         {bets.length === 0 ? (
           <div className="card text-sm text-white/60">Aucun pari.</div>
         ) : (
-          <div className="card overflow-hidden p-0">
+          <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
@@ -98,7 +98,7 @@ export default async function HistoryPage() {
 
       <section>
         <h2 className="mb-4 text-2xl font-bold">Transactions récentes</h2>
-        <div className="card overflow-hidden p-0">
+        <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">

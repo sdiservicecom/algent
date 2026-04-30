@@ -138,7 +138,7 @@ export default async function AdminPlayersPage({
         )}
       </form>
 
-      <div className="card overflow-hidden p-0">
+      <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">

@@ -7,6 +7,8 @@ import { getPlayer } from '@/lib/players';
 import { hasReceivedTodayBonus } from '@/lib/daily-bonus';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import { getLeaderboard } from '@/lib/leaderboard';
+import { pushIsConfigured } from '@/lib/push';
+import { PushNotificationsToggle } from '@/components/PushNotificationsToggle';
 
 export default async function DashboardPage() {
   const session = await requireUser();
@@ -76,6 +78,8 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {pushIsConfigured() && <PushNotificationsToggle />}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Paris en cours</h2>

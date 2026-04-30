@@ -55,6 +55,14 @@ export const K = {
     `algent:bonus:${userId}:${isoDate}`,
 
   oddsSnapshots: (matchId: string) => `algent:odds:bymatch:${matchId}`,
+
+  pushSubs: (userId: string) => `algent:push:subs:${userId}`,
+
+  tournament: () => `algent:tournament`,
+  tournamentBet: (id: string) => `algent:tbet:${id}`,
+  tournamentBetByUser: (userId: string) => `algent:tbets:byuser:${userId}`,
+  tournamentBetGuard: (userId: string) => `algent:tbets:guard:${userId}`,
+  tournamentBetsAll: () => `algent:tbets:all`,
 };
 
 export const newId = () =>
