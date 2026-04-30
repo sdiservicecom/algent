@@ -60,6 +60,10 @@ export const K = {
   notificationsByUser: (userId: string) => `algent:notifs:byuser:${userId}`,
   unreadByUser: (userId: string) => `algent:notifs:unread:${userId}`,
 
+  combo: (id: string) => `algent:combo:${id}`,
+  combosByUser: (userId: string) => `algent:combos:byuser:${userId}`,
+  combosByMatch: (matchId: string) => `algent:combos:bymatch:${matchId}`,
+
   tournament: () => `algent:tournament`,
   tournamentBet: (id: string) => `algent:tbet:${id}`,
   tournamentBetByUser: (userId: string) => `algent:tbets:byuser:${userId}`,

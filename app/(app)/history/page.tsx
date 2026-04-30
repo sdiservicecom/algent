@@ -1,5 +1,6 @@
 import { requireUser } from '@/lib/auth';
 import { listUserBets } from '@/lib/bets';
+import { listUserCombos } from '@/lib/combos';
 import { listUserTransactions } from '@/lib/wallet';
 import { getMatch } from '@/lib/matches';
 import { getPlayer } from '@/lib/players';
@@ -8,12 +9,18 @@ import type { BetStatus } from '@/lib/types';
 
 export default async function HistoryPage() {
   const session = await requireUser();
-  const [bets, txs] = await Promise.all([
+  const [bets, combos, txs] = await Promise.all([
     listUserBets(session.sub),
+    listUserCombos(session.sub),
     listUserTransactions(session.sub, 50),
   ]);
 
-  const matchIds = Array.from(new Set(bets.map((b) => b.matchId)));
+  const matchIds = Array.from(
+    new Set([
+      ...bets.map((b) => b.matchId),
+      ...combos.flatMap((c) => c.legs.map((l) => l.matchId)),
+    ]),
+  );
   const matches = Object.fromEntries(
     (await Promise.all(matchIds.map(getMatch)))
       .filter((m) => !!m)
@@ -96,6 +103,101 @@ export default async function HistoryPage() {
         )}
       </section>
 
+      {combos.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-2xl font-bold">Mes paris combinés</h2>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {combos.map((c) => {
+              const winningLegs = c.legs.filter((l) => l.status === 'WON').length;
+              return (
+                <li key={c.id} className="card">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="pill bg-accent/20 text-accent">
+                        {c.legs.length} paris
+                      </span>
+                      <span className="font-mono text-accent">
+                        × {c.combinedOdds.toFixed(2)}
+                      </span>
+                    </div>
+                    <ComboStatusPill status={c.status} />
+                  </div>
+                  <div className="mt-2 text-xs text-white/50">
+                    {fmtDateTime(c.placedAt)}
+                  </div>
+                  <ul className="mt-3 space-y-1 text-sm">
+                    {c.legs.map((leg, i) => {
+                      const m = matches[leg.matchId];
+                      const pa = m && players[m.playerAId];
+                      const pb = m && players[m.playerBId];
+                      const picked = players[leg.pickedPlayerId];
+                      const tone =
+                        leg.status === 'WON'
+                          ? 'text-success'
+                          : leg.status === 'LOST'
+                            ? 'text-danger line-through'
+                            : leg.status === 'CANCELLED'
+                              ? 'text-yellow-400'
+                              : 'text-white/80';
+                      return (
+                        <li
+                          key={i}
+                          className={`flex items-center gap-2 ${tone}`}
+                        >
+                          <span className="text-xs text-white/40">
+                            {legStatusIcon(leg.status)}
+                          </span>
+                          <span className="truncate">
+                            {picked
+                              ? `${picked.firstName} ${picked.lastName}`
+                              : '—'}
+                          </span>
+                          <span className="text-xs text-white/50">
+                            ({pa?.firstName} vs {pb?.firstName})
+                          </span>
+                          <span className="ml-auto font-mono text-xs">
+                            {fmtOdds(leg.oddsAtBet)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-sm">
+                    <span className="text-white/60">
+                      Mise{' '}
+                      <span className="font-medium">
+                        {fmtPoints(c.stake)}
+                      </span>{' '}
+                      → potentiel{' '}
+                      <span className="font-medium text-success">
+                        {fmtPoints(c.potentialWin)}
+                      </span>
+                    </span>
+                    {c.status === 'PENDING' ? (
+                      <span className="text-xs text-white/50">
+                        {winningLegs}/{c.legs.length} OK
+                      </span>
+                    ) : c.status === 'WON' ? (
+                      <span className="font-semibold text-success">
+                        +{fmtPoints(c.payout ?? 0)} pts
+                      </span>
+                    ) : c.status === 'LOST' ? (
+                      <span className="font-semibold text-danger">
+                        -{fmtPoints(c.stake)} pts
+                      </span>
+                    ) : (
+                      <span className="text-xs text-yellow-400">
+                        Annulé
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <section>
         <h2 className="mb-4 text-2xl font-bold">Transactions récentes</h2>
         <div className="card overflow-x-auto p-0">
@@ -138,6 +240,33 @@ export default async function HistoryPage() {
       </section>
     </div>
   );
+}
+
+function ComboStatusPill({ status }: { status: BetStatus }) {
+  const map: Record<BetStatus, { label: string; className: string }> = {
+    PENDING: { label: 'En cours', className: 'bg-white/10 text-white/70' },
+    WON: { label: 'Gagné', className: 'bg-success/20 text-success' },
+    LOST: { label: 'Perdu', className: 'bg-danger/20 text-danger' },
+    CANCELLED: {
+      label: 'Annulé',
+      className: 'bg-yellow-500/20 text-yellow-400',
+    },
+  };
+  const m = map[status];
+  return <span className={`pill ${m.className}`}>{m.label}</span>;
+}
+
+function legStatusIcon(s: BetStatus) {
+  switch (s) {
+    case 'WON':
+      return '✓';
+    case 'LOST':
+      return '✕';
+    case 'CANCELLED':
+      return '⊘';
+    default:
+      return '·';
+  }
 }
 
 function StatusPill({ status }: { status: BetStatus }) {

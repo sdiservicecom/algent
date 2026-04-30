@@ -10,6 +10,7 @@ import {
 } from './types';
 import { getPlayer } from './players';
 import { createNotification } from './notifications';
+import { resolveCombosForMatch } from './combos';
 import { applyWalletDelta } from './wallet';
 import { fmtPlayerName } from './format';
 
@@ -188,6 +189,9 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
   await kv.hset(K.match(matchId), { status: 'SETTLED', winnerId });
   await Promise.allSettled(notifications);
 
+  // Met à jour les paris combinés qui touchent ce match
+  await resolveCombosForMatch(matchId, winnerId, false);
+
   // Propagation bracket : injecte le vainqueur dans le match du round suivant.
   await propagateBracketWinner({ ...match, status: 'SETTLED', winnerId });
 }
@@ -285,6 +289,9 @@ export async function cancelMatch(matchId: string): Promise<void> {
   }
 
   await kv.hset(K.match(matchId), { status: 'CANCELLED' });
+
+  // Annule la jambe correspondante dans les paris combinés (cote neutre 1.0)
+  await resolveCombosForMatch(matchId, null, true);
 }
 
 export async function setMatchBracketInfo(

@@ -123,6 +123,26 @@ export interface TournamentBet {
   settledAt: string | null;
 }
 
+export interface ComboLeg {
+  matchId: string;
+  pickedPlayerId: string;
+  oddsAtBet: number;
+  status: BetStatus;
+}
+
+export interface ComboBet {
+  id: string;
+  userId: string;
+  legs: ComboLeg[];
+  stake: number;
+  combinedOdds: number;
+  potentialWin: number;
+  status: BetStatus;
+  payout: number | null;
+  placedAt: string;
+  settledAt: string | null;
+}
+
 export type NotificationKind =
   | 'BET_WON'
   | 'BET_LOST'
