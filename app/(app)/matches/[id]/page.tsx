@@ -76,25 +76,35 @@ export default async function MatchDetailPage({
         <div className="text-xs uppercase text-white/50">
           {fmtDateTime(match.startsAt)}
         </div>
-        <div className="mt-2 flex items-center justify-between gap-4">
-          <div className="flex flex-1 items-center gap-3">
+        <div className="mt-2 flex items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <PlayerAvatar player={pa} size={56} />
             <div className="min-w-0">
               <div className="truncate text-xl font-bold">
-                {fmtPlayerName(pa)}
+                {pa.firstName} {pa.lastName}
               </div>
+              {pa.nickname && (
+                <div className="truncate text-sm text-white/60">
+                  « {pa.nickname} »
+                </div>
+              )}
               <div className="text-xs text-white/50">Seed #{pa.seed}</div>
               <div className="mt-1 text-2xl font-bold text-accent">
                 {fmtOdds(match.oddsA)}
               </div>
             </div>
           </div>
-          <div className="text-white/40">vs</div>
-          <div className="flex flex-1 items-center justify-end gap-3 text-right">
+          <div className="pt-3 text-white/40">vs</div>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-3 text-right">
             <div className="min-w-0">
               <div className="truncate text-xl font-bold">
-                {fmtPlayerName(pb)}
+                {pb.firstName} {pb.lastName}
               </div>
+              {pb.nickname && (
+                <div className="truncate text-sm text-white/60">
+                  « {pb.nickname} »
+                </div>
+              )}
               <div className="text-xs text-white/50">Seed #{pb.seed}</div>
               <div className="mt-1 text-2xl font-bold text-accent">
                 {fmtOdds(match.oddsB)}

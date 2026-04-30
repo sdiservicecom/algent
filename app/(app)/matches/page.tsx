@@ -49,24 +49,34 @@ export default async function MatchesPage() {
                     {fmtDateTime(m.startsAt)}
                   </span>
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <div className="flex flex-1 items-center gap-3">
+                <div className="mt-3 flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
                     <PlayerAvatar player={pa} size={40} />
                     <div className="min-w-0">
                       <div className="truncate font-semibold">
-                        {fmtPlayerName(pa)}
+                        {pa.firstName} {pa.lastName}
                       </div>
+                      {pa.nickname && (
+                        <div className="truncate text-xs text-white/60">
+                          « {pa.nickname} »
+                        </div>
+                      )}
                       <div className="text-xs text-white/50">
                         Seed #{pa.seed}
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs text-white/50">vs</div>
-                  <div className="flex flex-1 items-center justify-end gap-3 text-right">
+                  <div className="pt-2 text-xs text-white/50">vs</div>
+                  <div className="flex min-w-0 flex-1 items-center justify-end gap-3 text-right">
                     <div className="min-w-0">
                       <div className="truncate font-semibold">
-                        {fmtPlayerName(pb)}
+                        {pb.firstName} {pb.lastName}
                       </div>
+                      {pb.nickname && (
+                        <div className="truncate text-xs text-white/60">
+                          « {pb.nickname} »
+                        </div>
+                      )}
                       <div className="text-xs text-white/50">
                         Seed #{pb.seed}
                       </div>
