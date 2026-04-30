@@ -67,7 +67,7 @@ export default async function MatchesPage({
               className={`rounded-full border px-3 py-1 transition ${
                 active
                   ? 'border-accent bg-accent text-white'
-                  : 'border-border bg-white text-fg/70 hover:border-accent'
+                  : 'border-border bg-surface text-fg/70 hover:border-accent hover:text-accent'
               }`}
             >
               {f.label}
@@ -81,7 +81,7 @@ export default async function MatchesPage({
           className={`rounded-full border px-3 py-1 transition ${
             roundFilter === 'ALL'
               ? 'border-accent bg-accent text-white'
-              : 'border-border bg-white text-fg/70 hover:border-accent'
+              : 'border-border bg-surface text-fg/70 hover:border-accent hover:text-accent'
           }`}
         >
           Toutes phases
@@ -95,7 +95,7 @@ export default async function MatchesPage({
               className={`rounded-full border px-3 py-1 transition ${
                 active
                   ? 'border-accent bg-accent text-white'
-                  : 'border-border bg-white text-fg/70 hover:border-accent'
+                  : 'border-border bg-surface text-fg/70 hover:border-accent hover:text-accent'
               }`}
             >
               {MATCH_ROUND_LABEL[r]}
