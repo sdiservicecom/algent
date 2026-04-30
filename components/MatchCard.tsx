@@ -88,6 +88,8 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
             pickLabel: `${player.firstName} ${player.lastName}`,
             pickPhotoUrl: player.photoUrl,
             oddsAtAdd: odds,
+            playerALabel: pa.firstName,
+            playerBLabel: pb.firstName,
           })
         }
         className={`rounded-md border p-2 text-left transition ${

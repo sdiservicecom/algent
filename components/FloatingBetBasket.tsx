@@ -27,7 +27,7 @@ const ERROR_LABEL: Record<string, string> = {
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
 export function FloatingBetBasket({ balance }: { balance: number }) {
-  const { items, remove, setStake, clear } = useBasket();
+  const { items, remove, setStake, setScoreGuess, clear } = useBasket();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('individual');
   const [comboStake, setComboStake] = useState<number>(50);
@@ -74,6 +74,8 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
             matchId: i.matchId,
             pickedPlayerId: i.pickedPlayerId,
             stake: Math.floor(i.stake),
+            scoreGuessA: i.scoreGuessA ?? null,
+            scoreGuessB: i.scoreGuessB ?? null,
           })),
         }),
       });
@@ -192,6 +194,7 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
                     <div className="mt-2 flex items-center gap-2">
                       <input
                         type="number"
+                        inputMode="numeric"
                         min={10}
                         max={Math.min(balance, 50_000)}
                         step={1}
@@ -203,6 +206,7 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
                           )
                         }
                         className="input"
+                        aria-label="Mise"
                       />
                       <button
                         onClick={() => remove(i.matchId)}
@@ -212,14 +216,58 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
                         ✕
                       </button>
                     </div>
-                    <div className="mt-1 text-xs text-success">
-                      Gain potentiel :{' '}
-                      {fmtPoints(
-                        Math.floor(
-                          (Number(i.stake) || 0) * i.oddsAtAdd,
-                        ),
-                      )}{' '}
-                      pts
+                    <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={1}
+                        placeholder={i.playerALabel ?? 'A'}
+                        value={i.scoreGuessA ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const next = raw === '' ? null : Math.max(0, Math.floor(Number(raw)));
+                          setScoreGuess(
+                            i.matchId,
+                            Number.isFinite(next as number) ? (next as number) : null,
+                            i.scoreGuessB ?? null,
+                          );
+                        }}
+                        className="input text-center text-base font-semibold"
+                        aria-label={`Score ${i.playerALabel ?? 'A'}`}
+                      />
+                      <span className="text-fg/40">–</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={1}
+                        placeholder={i.playerBLabel ?? 'B'}
+                        value={i.scoreGuessB ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const next = raw === '' ? null : Math.max(0, Math.floor(Number(raw)));
+                          setScoreGuess(
+                            i.matchId,
+                            i.scoreGuessA ?? null,
+                            Number.isFinite(next as number) ? (next as number) : null,
+                          );
+                        }}
+                        className="input text-center text-base font-semibold"
+                        aria-label={`Score ${i.playerBLabel ?? 'B'}`}
+                      />
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs text-success">
+                      <span>
+                        Gain potentiel :{' '}
+                        {fmtPoints(
+                          Math.floor(
+                            (Number(i.stake) || 0) * i.oddsAtAdd,
+                          ),
+                        )}{' '}
+                        pts
+                      </span>
+                      <span className="text-fg/50">🎯 score : bonus +mise</span>
                     </div>
                     {errors[i.matchId] && (
                       <div className="mt-1 text-xs text-danger">

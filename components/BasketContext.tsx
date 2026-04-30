@@ -16,6 +16,12 @@ export interface BasketItem {
   pickPhotoUrl: string | null;
   oddsAtAdd: number;
   stake: number;
+  /** Labels courts (firstName) pour pré-remplir les inputs de score. */
+  playerALabel?: string;
+  playerBLabel?: string;
+  /** Pronostic optionnel du score exact. */
+  scoreGuessA?: number | null;
+  scoreGuessB?: number | null;
 }
 
 interface Ctx {
@@ -25,6 +31,11 @@ interface Ctx {
   toggle: (item: Omit<BasketItem, 'stake'>) => void;
   remove: (matchId: string) => void;
   setStake: (matchId: string, stake: number) => void;
+  setScoreGuess: (
+    matchId: string,
+    a: number | null,
+    b: number | null,
+  ) => void;
   clear: () => void;
 }
 
@@ -101,11 +112,33 @@ export function BasketProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const setScoreGuess = useCallback(
+    (matchId: string, a: number | null, b: number | null) => {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.matchId === matchId
+            ? { ...i, scoreGuessA: a, scoreGuessB: b }
+            : i,
+        ),
+      );
+    },
+    [],
+  );
+
   const clear = useCallback(() => setItems([]), []);
 
   return (
     <BasketCtx.Provider
-      value={{ items, isPicked, hasMatch, toggle, remove, setStake, clear }}
+      value={{
+        items,
+        isPicked,
+        hasMatch,
+        toggle,
+        remove,
+        setStake,
+        setScoreGuess,
+        clear,
+      }}
     >
       {children}
     </BasketCtx.Provider>

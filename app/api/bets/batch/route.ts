@@ -11,6 +11,8 @@ interface BatchItem {
   matchId: string;
   pickedPlayerId: string;
   stake: number;
+  scoreGuessA?: number | null;
+  scoreGuessB?: number | null;
 }
 
 export async function POST(req: Request) {
@@ -53,6 +55,12 @@ export async function POST(req: Request) {
   const placed: string[] = [];
   const errors: Record<string, string> = {};
 
+  const cleanScore = (v: unknown): number | null => {
+    if (v == null) return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+  };
+
   for (const item of items) {
     try {
       await placeBet({
@@ -60,6 +68,8 @@ export async function POST(req: Request) {
         matchId: item.matchId,
         pickedPlayerId: item.pickedPlayerId,
         stake: Math.floor(item.stake),
+        scoreGuessA: cleanScore(item.scoreGuessA),
+        scoreGuessB: cleanScore(item.scoreGuessB),
       });
       placed.push(item.matchId);
     } catch (e) {
