@@ -24,6 +24,7 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/cron') ||
+    pathname === '/api/health' ||
     PUBLIC_PATHS.some((p) => pathname === p)
   ) {
     return NextResponse.next();

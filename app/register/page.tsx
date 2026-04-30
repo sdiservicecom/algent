@@ -11,14 +11,10 @@ async function register(formData: FormData) {
   const username = String(formData.get('username') ?? '').trim();
   const password = String(formData.get('password') ?? '');
 
-  if (
-    firstName.length < 1 ||
-    lastName.length < 1 ||
-    username.length < 3 ||
-    password.length < 6
-  ) {
-    return redirect('/register?error=validation');
-  }
+  if (firstName.length < 1) return redirect('/register?error=firstName');
+  if (lastName.length < 1) return redirect('/register?error=lastName');
+  if (username.length < 3) return redirect('/register?error=username');
+  if (password.length < 6) return redirect('/register?error=password');
 
   let user;
   try {
@@ -32,22 +28,35 @@ async function register(formData: FormData) {
     if (e instanceof UserError && e.code === 'USERNAME_TAKEN') {
       return redirect('/register?error=taken');
     }
-    return redirect('/register?error=validation');
+    console.error('[register] createUser failed:', e);
+    const msg = e instanceof Error ? e.message : 'unknown';
+    return redirect(
+      `/register?error=server&detail=${encodeURIComponent(msg)}`,
+    );
   }
 
-  const token = await signSession({
-    sub: user.id,
-    username: user.username,
-    role: user.role,
-  });
-  await setSessionCookie(token);
+  try {
+    const token = await signSession({
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+    });
+    await setSessionCookie(token);
+  } catch (e) {
+    console.error('[register] signSession failed:', e);
+    const msg = e instanceof Error ? e.message : 'unknown';
+    return redirect(
+      `/register?error=session&detail=${encodeURIComponent(msg)}`,
+    );
+  }
+
   redirect('/dashboard');
 }
 
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; detail?: string }>;
 }) {
   const session = await getSession();
   if (session) redirect('/dashboard');
@@ -78,7 +87,7 @@ export default async function RegisterPage({
           </div>
           <div>
             <label className="label" htmlFor="username">
-              Pseudonyme
+              Pseudonyme (3 caractères min.)
             </label>
             <input
               id="username"
@@ -104,11 +113,14 @@ export default async function RegisterPage({
             />
           </div>
           {sp.error && (
-            <p className="text-sm text-danger">
-              {sp.error === 'taken'
-                ? 'Ce pseudonyme est déjà pris.'
-                : 'Veuillez vérifier les champs.'}
-            </p>
+            <div className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm">
+              <p className="text-danger">{errorMessage(sp.error)}</p>
+              {sp.detail && (
+                <p className="mt-1 break-words font-mono text-xs text-white/60">
+                  {sp.detail}
+                </p>
+              )}
+            </div>
           )}
           <button className="btn-primary w-full" type="submit">
             Créer mon compte
@@ -123,4 +135,25 @@ export default async function RegisterPage({
       </div>
     </main>
   );
+}
+
+function errorMessage(code: string): string {
+  switch (code) {
+    case 'firstName':
+      return 'Prénom requis.';
+    case 'lastName':
+      return 'Nom requis.';
+    case 'username':
+      return 'Le pseudonyme doit faire 3 caractères minimum.';
+    case 'password':
+      return 'Le mot de passe doit faire 6 caractères minimum.';
+    case 'taken':
+      return 'Ce pseudonyme est déjà pris.';
+    case 'server':
+      return 'Erreur serveur — vérifie que Vercel KV est bien connecté au projet (variables KV_*).';
+    case 'session':
+      return 'Erreur de session — vérifie que la variable AUTH_SECRET est définie sur Vercel.';
+    default:
+      return 'Erreur inconnue.';
+  }
 }
