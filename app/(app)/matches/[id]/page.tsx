@@ -230,9 +230,9 @@ export default async function MatchDetailPage({
             </span>
           </p>
           {myBet.scoreGuessA != null && myBet.scoreGuessB != null && (
-            <p className="mt-1 text-xs text-fg/60">
+            <p className="mt-2 text-sm text-fg/70">
               Pronostic du score :{' '}
-              <span className="font-mono font-semibold text-fg/80">
+              <span className="font-mono text-base font-semibold text-fg">
                 {myBet.scoreGuessA} – {myBet.scoreGuessB}
               </span>
               {myScoreCorrect && (

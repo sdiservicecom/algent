@@ -296,9 +296,10 @@ export default async function AdminMatchDetailPage({
               <input
                 name="scoreA"
                 type="number"
+                inputMode="numeric"
                 min={0}
-                max={9}
-                className="input w-20 text-center"
+                step={1}
+                className="input w-24 text-center text-lg font-semibold"
               />
             </div>
             <div>
@@ -306,9 +307,10 @@ export default async function AdminMatchDetailPage({
               <input
                 name="scoreB"
                 type="number"
+                inputMode="numeric"
                 min={0}
-                max={9}
-                className="input w-20 text-center"
+                step={1}
+                className="input w-24 text-center text-lg font-semibold"
               />
             </div>
             <button className="btn-primary" type="submit">

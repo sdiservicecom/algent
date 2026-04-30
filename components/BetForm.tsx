@@ -147,29 +147,41 @@ export function BetForm({ matchId, playerA, playerB, balance, action }: Props) {
         <div className="label flex items-center justify-between">
           <span>Pronostic du score (optionnel)</span>
           <span className="text-[10px] normal-case text-fg/50">
-            Bonus +mise si exact 🎯
+            🎯 Bonus +mise si exact
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            name="scoreGuessA"
-            type="number"
-            min={0}
-            max={9}
-            placeholder="Sets A"
-            className="input text-center"
-            aria-label={`Score ${playerA.firstName}`}
-          />
-          <span className="text-fg/40">—</span>
-          <input
-            name="scoreGuessB"
-            type="number"
-            min={0}
-            max={9}
-            placeholder="Sets B"
-            className="input text-center"
-            aria-label={`Score ${playerB.firstName}`}
-          />
+        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+          <div>
+            <div className="mb-1 truncate text-[10px] font-medium text-fg/60">
+              {playerA.firstName}
+            </div>
+            <input
+              name="scoreGuessA"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              placeholder="—"
+              className="input text-center text-lg font-semibold"
+              aria-label={`Score ${playerA.firstName}`}
+            />
+          </div>
+          <div className="pb-2 text-fg/40">–</div>
+          <div>
+            <div className="mb-1 truncate text-right text-[10px] font-medium text-fg/60">
+              {playerB.firstName}
+            </div>
+            <input
+              name="scoreGuessB"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              placeholder="—"
+              className="input text-center text-lg font-semibold"
+              aria-label={`Score ${playerB.firstName}`}
+            />
+          </div>
         </div>
       </div>
 
