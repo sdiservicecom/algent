@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { fmtOdds, fmtPoints } from '@/lib/format';
+import { fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 
 interface PlayerOption {
   id: string;
   firstName: string;
   lastName: string;
+  nickname: string | null;
   photoUrl: string | null;
   odds: number;
 }
@@ -54,7 +55,7 @@ export function BetForm({ matchId, playerA, playerB, balance, action }: Props) {
                 <PlayerAvatar player={p} size={40} />
                 <div className="min-w-0">
                   <div className="truncate font-medium">
-                    {p.firstName} {p.lastName}
+                    {fmtPlayerName(p)}
                   </div>
                   <div className="text-sm text-accent">@ {fmtOdds(p.odds)}</div>
                 </div>

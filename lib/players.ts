@@ -11,8 +11,8 @@ export class PlayerError extends Error {
 export async function getPlayer(id: string): Promise<Player | null> {
   const raw = await kv.get<Partial<Player> & { id?: string }>(K.player(id));
   if (!raw || !raw.id) return null;
-  // Compat: les joueurs créés avant l'ajout de photoUrl n'ont pas le champ.
-  return { photoUrl: null, ...raw } as Player;
+  // Compat: les joueurs créés avant l'ajout de nickname / photoUrl.
+  return { nickname: null, photoUrl: null, ...raw } as Player;
 }
 
 export async function listPlayers(): Promise<Player[]> {
@@ -26,6 +26,7 @@ export async function createPlayer(input: {
   firstName: string;
   lastName: string;
   seed: number;
+  nickname?: string | null;
   photoUrl?: string | null;
 }): Promise<Player> {
   const taken = await kv.set(K.playerBySeed(input.seed), '__placeholder__', {
@@ -33,10 +34,13 @@ export async function createPlayer(input: {
   });
   if (taken !== 'OK') throw new PlayerError('SEED_TAKEN');
 
+  const nickname = input.nickname?.trim();
+
   const player: Player = {
     id: newId(),
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
+    nickname: nickname && nickname.length > 0 ? nickname : null,
     seed: input.seed,
     photoUrl: normalizePhotoUrl(input.photoUrl),
     createdAt: new Date().toISOString(),

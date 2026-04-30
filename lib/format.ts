@@ -11,3 +11,15 @@ export const fmtDateTime = (d: Date | string) =>
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(typeof d === 'string' ? new Date(d) : d);
+
+interface NameLike {
+  firstName: string;
+  lastName: string;
+  nickname?: string | null;
+}
+
+/** "Rafael « Rafa » Nadal" si pseudo, sinon "Rafael Nadal". */
+export const fmtPlayerName = (p: NameLike): string =>
+  p.nickname && p.nickname.length > 0
+    ? `${p.firstName} « ${p.nickname} » ${p.lastName}`
+    : `${p.firstName} ${p.lastName}`;

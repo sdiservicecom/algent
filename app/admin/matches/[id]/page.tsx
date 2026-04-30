@@ -10,7 +10,7 @@ import {
 import { listMatchBets } from '@/lib/bets';
 import { getPlayer } from '@/lib/players';
 import { getUser } from '@/lib/users';
-import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
+import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 
 async function open(formData: FormData) {
   'use server';
@@ -95,7 +95,7 @@ export default async function AdminMatchDetailPage({
           {fmtDateTime(match.startsAt)} · {match.status}
         </div>
         <h1 className="mt-2 text-xl font-bold">
-          {pa.firstName} {pa.lastName} vs {pb.firstName} {pb.lastName}
+          {fmtPlayerName(pa)} vs {fmtPlayerName(pb)}
         </h1>
         <div className="mt-2 text-sm text-white/60">
           Cotes : {fmtOdds(match.oddsA)} / {fmtOdds(match.oddsB)} · Mises :{' '}
@@ -105,7 +105,7 @@ export default async function AdminMatchDetailPage({
           <div className="mt-2 text-sm">
             Vainqueur :{' '}
             <span className="font-semibold text-success">
-              {winner.firstName} {winner.lastName}
+              {fmtPlayerName(winner)}
             </span>
           </div>
         )}
@@ -147,12 +147,8 @@ export default async function AdminMatchDetailPage({
               <label className="label">Vainqueur</label>
               <select name="winnerId" required className="input">
                 <option value="">—</option>
-                <option value={match.playerAId}>
-                  {pa.firstName} {pa.lastName}
-                </option>
-                <option value={match.playerBId}>
-                  {pb.firstName} {pb.lastName}
-                </option>
+                <option value={match.playerAId}>{fmtPlayerName(pa)}</option>
+                <option value={match.playerBId}>{fmtPlayerName(pb)}</option>
               </select>
             </div>
             <button className="btn-primary" type="submit">
@@ -184,9 +180,7 @@ export default async function AdminMatchDetailPage({
                 return (
                   <tr key={b.id} className="border-b border-border/50">
                     <td className="px-3 py-2">{u?.username ?? '—'}</td>
-                    <td className="px-3 py-2">
-                      {picked.firstName} {picked.lastName}
-                    </td>
+                    <td className="px-3 py-2">{fmtPlayerName(picked)}</td>
                     <td className="px-3 py-2 font-mono">
                       {fmtOdds(b.oddsAtBet)}
                     </td>

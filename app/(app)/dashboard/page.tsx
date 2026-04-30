@@ -5,7 +5,7 @@ import { listUserBets } from '@/lib/bets';
 import { getMatch } from '@/lib/matches';
 import { getPlayer } from '@/lib/players';
 import { hasReceivedTodayBonus } from '@/lib/daily-bonus';
-import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
+import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import { getLeaderboard } from '@/lib/leaderboard';
 
 export default async function DashboardPage() {
@@ -98,12 +98,10 @@ export default async function DashboardPage() {
               return (
                 <li key={b.id} className="card">
                   <div className="text-sm text-white/60">
-                    {pa.firstName} {pa.lastName} vs {pb.firstName}{' '}
-                    {pb.lastName}
+                    {fmtPlayerName(pa)} vs {fmtPlayerName(pb)}
                   </div>
                   <div className="mt-1 font-medium">
-                    Pari sur {picked.firstName} {picked.lastName} @{' '}
-                    {fmtOdds(b.oddsAtBet)}
+                    Pari sur {fmtPlayerName(picked)} @ {fmtOdds(b.oddsAtBet)}
                   </div>
                   <div className="mt-1 text-sm">
                     Mise{' '}

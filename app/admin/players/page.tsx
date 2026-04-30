@@ -7,20 +7,37 @@ import {
   deletePlayer,
   listPlayers,
 } from '@/lib/players';
+import { UploadError, uploadPlayerPhoto } from '@/lib/upload';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { fmtPlayerName } from '@/lib/format';
 
 async function createPlayerAction(formData: FormData) {
   'use server';
   await requireAdmin();
   const firstName = String(formData.get('firstName') ?? '').trim();
   const lastName = String(formData.get('lastName') ?? '').trim();
+  const nickname = String(formData.get('nickname') ?? '').trim() || null;
   const seed = Number(formData.get('seed'));
-  const photoUrl = String(formData.get('photoUrl') ?? '').trim() || null;
+  const photoFile = formData.get('photoFile') as File | null;
+  const pastedUrl = String(formData.get('photoUrl') ?? '').trim() || null;
+
   if (!firstName || !lastName || !Number.isFinite(seed) || seed < 1) {
     return redirect('/admin/players?error=validation');
   }
+
+  let photoUrl: string | null = pastedUrl;
   try {
-    await createPlayer({ firstName, lastName, seed, photoUrl });
+    const uploaded = await uploadPlayerPhoto(photoFile);
+    if (uploaded) photoUrl = uploaded;
+  } catch (e) {
+    if (e instanceof UploadError) {
+      return redirect(`/admin/players?error=upload-${e.code.toLowerCase()}`);
+    }
+    throw e;
+  }
+
+  try {
+    await createPlayer({ firstName, lastName, nickname, seed, photoUrl });
   } catch (e) {
     if (e instanceof PlayerError && e.code === 'SEED_TAKEN') {
       return redirect('/admin/players?error=seed-taken');
@@ -62,15 +79,20 @@ export default async function AdminPlayersPage({
 
       <form
         action={createPlayerAction}
+        encType="multipart/form-data"
         className="card grid grid-cols-1 gap-3 md:grid-cols-6"
       >
-        <div>
+        <div className="md:col-span-2">
           <label className="label">Prénom</label>
           <input name="firstName" required className="input" />
         </div>
-        <div>
+        <div className="md:col-span-2">
           <label className="label">Nom</label>
           <input name="lastName" required className="input" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="label">Pseudo (optionnel)</label>
+          <input name="nickname" className="input" />
         </div>
         <div>
           <label className="label">Seed</label>
@@ -82,8 +104,17 @@ export default async function AdminPlayersPage({
             className="input"
           />
         </div>
+        <div className="md:col-span-3">
+          <label className="label">Photo (upload, max 5 Mo)</label>
+          <input
+            name="photoFile"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="input file:mr-3 file:rounded file:border-0 file:bg-accent file:px-3 file:py-1 file:text-white"
+          />
+        </div>
         <div className="md:col-span-2">
-          <label className="label">URL photo (optionnel)</label>
+          <label className="label">… ou URL externe</label>
           <input
             name="photoUrl"
             type="url"
@@ -91,18 +122,14 @@ export default async function AdminPlayersPage({
             className="input"
           />
         </div>
-        <div className="flex items-end">
-          <button className="btn-primary w-full" type="submit">
-            Ajouter
+        <div className="md:col-span-6 flex justify-end">
+          <button className="btn-primary md:w-auto" type="submit">
+            Ajouter le joueur
           </button>
         </div>
         {sp.error && (
           <p className="md:col-span-6 text-sm text-danger">
-            {sp.error === 'seed-taken'
-              ? 'Ce seed est déjà attribué.'
-              : sp.error === 'in-use'
-                ? 'Ce joueur est utilisé dans un match.'
-                : 'Champs invalides.'}
+            {errorLabel(sp.error)}
           </p>
         )}
         {sp.ok && (
@@ -126,9 +153,7 @@ export default async function AdminPlayersPage({
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-3">
                     <PlayerAvatar player={p} size={32} />
-                    <span>
-                      {p.firstName} {p.lastName}
-                    </span>
+                    <span>{fmtPlayerName(p)}</span>
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -146,6 +171,25 @@ export default async function AdminPlayersPage({
       </div>
     </div>
   );
+}
+
+function errorLabel(code: string): string {
+  switch (code) {
+    case 'seed-taken':
+      return 'Ce seed est déjà attribué.';
+    case 'in-use':
+      return 'Ce joueur est utilisé dans un match.';
+    case 'upload-too_large':
+      return 'Image trop lourde (max 5 Mo).';
+    case 'upload-bad_type':
+      return 'Format non supporté (JPEG, PNG, WebP ou GIF).';
+    case 'upload-blob_not_configured':
+      return "Vercel Blob n'est pas branché au projet — connecte-le dans Storage, ou utilise une URL externe.";
+    case 'upload-failed':
+      return "Échec de l'upload. Réessaie ou utilise une URL externe.";
+    default:
+      return 'Champs invalides.';
+  }
 }
 
 export const dynamic = 'force-dynamic';

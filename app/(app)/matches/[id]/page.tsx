@@ -7,7 +7,7 @@ import { WalletError } from '@/lib/wallet';
 import { getMatch, listOddsSnapshots } from '@/lib/matches';
 import { getPlayer } from '@/lib/players';
 import { LOCK_BEFORE_START_MS } from '@/lib/odds';
-import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
+import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import { BetForm } from '@/components/BetForm';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 
@@ -81,7 +81,7 @@ export default async function MatchDetailPage({
             <PlayerAvatar player={pa} size={56} />
             <div className="min-w-0">
               <div className="truncate text-xl font-bold">
-                {pa.firstName} {pa.lastName}
+                {fmtPlayerName(pa)}
               </div>
               <div className="text-xs text-white/50">Seed #{pa.seed}</div>
               <div className="mt-1 text-2xl font-bold text-accent">
@@ -93,7 +93,7 @@ export default async function MatchDetailPage({
           <div className="flex flex-1 items-center justify-end gap-3 text-right">
             <div className="min-w-0">
               <div className="truncate text-xl font-bold">
-                {pb.firstName} {pb.lastName}
+                {fmtPlayerName(pb)}
               </div>
               <div className="text-xs text-white/50">Seed #{pb.seed}</div>
               <div className="mt-1 text-2xl font-bold text-accent">
@@ -135,8 +135,10 @@ export default async function MatchDetailPage({
         <div className="card">
           <h2 className="mb-2 text-lg font-semibold">Votre pari</h2>
           <p className="text-sm">
-            {(myBet.pickedPlayerId === match.playerAId ? pa : pb).firstName} @{' '}
-            {fmtOdds(myBet.oddsAtBet)} — mise{' '}
+            {fmtPlayerName(
+              myBet.pickedPlayerId === match.playerAId ? pa : pb,
+            )}{' '}
+            @ {fmtOdds(myBet.oddsAtBet)} — mise{' '}
             <span className="font-medium">{fmtPoints(myBet.stake)} pts</span> →
             gain potentiel{' '}
             <span className="font-medium text-success">
@@ -151,6 +153,7 @@ export default async function MatchDetailPage({
             id: pa.id,
             firstName: pa.firstName,
             lastName: pa.lastName,
+            nickname: pa.nickname,
             photoUrl: pa.photoUrl,
             odds: match.oddsA,
           }}
@@ -158,6 +161,7 @@ export default async function MatchDetailPage({
             id: pb.id,
             firstName: pb.firstName,
             lastName: pb.lastName,
+            nickname: pb.nickname,
             photoUrl: pb.photoUrl,
             odds: match.oddsB,
           }}
@@ -170,7 +174,7 @@ export default async function MatchDetailPage({
             <>
               Match réglé. Vainqueur :{' '}
               <span className="font-semibold text-success">
-                {winner.firstName} {winner.lastName}
+                {fmtPlayerName(winner)}
               </span>
             </>
           ) : tooLate ? (

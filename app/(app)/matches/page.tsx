@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { listMatches } from '@/lib/matches';
 import { listPlayers } from '@/lib/players';
-import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
+import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import type { MatchStatus } from '@/lib/types';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 
@@ -54,7 +54,7 @@ export default async function MatchesPage() {
                     <PlayerAvatar player={pa} size={40} />
                     <div className="min-w-0">
                       <div className="truncate font-semibold">
-                        {pa.firstName} {pa.lastName}
+                        {fmtPlayerName(pa)}
                       </div>
                       <div className="text-xs text-white/50">
                         Seed #{pa.seed}
@@ -65,7 +65,7 @@ export default async function MatchesPage() {
                   <div className="flex flex-1 items-center justify-end gap-3 text-right">
                     <div className="min-w-0">
                       <div className="truncate font-semibold">
-                        {pb.firstName} {pb.lastName}
+                        {fmtPlayerName(pb)}
                       </div>
                       <div className="text-xs text-white/50">
                         Seed #{pb.seed}
@@ -109,7 +109,7 @@ export default async function MatchesPage() {
                   <div className="mt-3 text-sm">
                     Vainqueur :{' '}
                     <span className="font-semibold text-success">
-                      {winner.firstName} {winner.lastName}
+                      {fmtPlayerName(winner)}
                     </span>
                   </div>
                 )}

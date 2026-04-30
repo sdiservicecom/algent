@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { createMatch, listMatches } from '@/lib/matches';
 import { listPlayers } from '@/lib/players';
-import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
+import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 
 async function createMatchAction(formData: FormData) {
   'use server';
@@ -52,7 +52,7 @@ export default async function AdminMatchesPage({
             <option value="">—</option>
             {players.map((p) => (
               <option key={p.id} value={p.id}>
-                #{p.seed} · {p.firstName} {p.lastName}
+                #{p.seed} · {fmtPlayerName(p)}
               </option>
             ))}
           </select>
@@ -63,7 +63,7 @@ export default async function AdminMatchesPage({
             <option value="">—</option>
             {players.map((p) => (
               <option key={p.id} value={p.id}>
-                #{p.seed} · {p.firstName} {p.lastName}
+                #{p.seed} · {fmtPlayerName(p)}
               </option>
             ))}
           </select>
@@ -112,8 +112,8 @@ export default async function AdminMatchesPage({
                     {fmtDateTime(m.startsAt)}
                   </td>
                   <td className="px-3 py-2">
-                    {pa?.firstName} {pa?.lastName} vs {pb?.firstName}{' '}
-                    {pb?.lastName}
+                    {pa ? fmtPlayerName(pa) : '?'} vs{' '}
+                    {pb ? fmtPlayerName(pb) : '?'}
                   </td>
                   <td className="px-3 py-2 font-mono">
                     {fmtOdds(m.oddsA)} / {fmtOdds(m.oddsB)}

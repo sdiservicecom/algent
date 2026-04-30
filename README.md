@@ -7,6 +7,7 @@ Aucun argent réel.
 
 - **Next.js 15** (App Router) + React 19 + TypeScript + Tailwind
 - **Upstash Redis** (via l'intégration Vercel Marketplace) pour tout le stockage — pas de schéma, pas de migrations
+- **Vercel Blob** (optionnel) pour héberger les photos des joueurs uploadées depuis l'admin
 - **bcryptjs** + **jose** (JWT en cookie httpOnly)
 - Déploiement **Vercel** (cron job inclus)
 
@@ -16,8 +17,9 @@ Aucun argent réel.
 2. Settings → Environment Variables, ajouter :
    - `AUTH_SECRET` (>= 32 caractères : `openssl rand -base64 32`)
    - `CRON_SECRET` (n'importe quel secret long, Vercel l'envoie auto aux endpoints `/api/cron/*`)
-3. Redeploy.
-4. **Le premier utilisateur qui s'inscrit devient ADMIN automatiquement** — va sur `/register`, crée ton compte d'admin, puis tu pourras créer joueurs / matchs depuis `/admin`.
+3. *(optionnel)* Pour permettre l'upload de photos joueurs : Storage → Browse Marketplace → **Blob** → créer et **Connect** au projet (`BLOB_READ_WRITE_TOKEN` auto-injecté). Sans cette intégration, l'admin peut toujours coller une URL d'image externe.
+4. Redeploy.
+5. **Le premier utilisateur qui s'inscrit devient ADMIN automatiquement** — va sur `/register`, crée ton compte d'admin, puis tu pourras créer joueurs / matchs depuis `/admin`.
 
 Le cron quotidien (`vercel.json`) frappe `/api/cron/daily-bonus` à 06:00 UTC.
 
