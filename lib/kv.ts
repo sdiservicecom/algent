@@ -1,6 +1,31 @@
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
-export { kv };
+/**
+ * Client Upstash Redis.
+ *
+ * Lit `UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN` (intégration
+ * Vercel Marketplace). Fallback sur `KV_REST_API_URL` / `KV_REST_API_TOKEN`
+ * si l'ancienne nomenclature Vercel KV est utilisée.
+ */
+function buildClient(): Redis {
+  const url =
+    process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+  const token =
+    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+
+  if (!url || !token) {
+    throw new Error(
+      'Missing required environment variables UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or legacy KV_REST_API_URL / KV_REST_API_TOKEN)',
+    );
+  }
+
+  return new Redis({ url, token });
+}
+
+const globalForKv = globalThis as unknown as { __algentKv?: Redis };
+
+export const kv: Redis =
+  globalForKv.__algentKv ?? (globalForKv.__algentKv = buildClient());
 
 // Conventions de clés (préfixe `algent:`)
 export const K = {

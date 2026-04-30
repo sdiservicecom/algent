@@ -6,13 +6,13 @@ Aucun argent réel.
 ## Stack
 
 - **Next.js 15** (App Router) + React 19 + TypeScript + Tailwind
-- **Vercel KV** (Upstash Redis) pour tout le stockage — pas de schéma, pas de migrations
+- **Upstash Redis** (via l'intégration Vercel Marketplace) pour tout le stockage — pas de schéma, pas de migrations
 - **bcryptjs** + **jose** (JWT en cookie httpOnly)
 - Déploiement **Vercel** (cron job inclus)
 
 ## Déploiement Vercel
 
-1. Sur Vercel, **Storage → Create → KV** (déjà fait), lié au projet : les variables `KV_*` sont auto-injectées.
+1. Sur Vercel, **Storage → Browse Marketplace → Upstash Redis**, créer la base et **Connect** au projet `algent` : les variables `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` sont auto-injectées.
 2. Settings → Environment Variables, ajouter :
    - `AUTH_SECRET` (>= 32 caractères : `openssl rand -base64 32`)
    - `CRON_SECRET` (n'importe quel secret long, Vercel l'envoie auto aux endpoints `/api/cron/*`)

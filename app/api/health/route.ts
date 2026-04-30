@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
 
 export async function GET() {
   const env = {
+    UPSTASH_REDIS_REST_URL: !!process.env.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: !!process.env.UPSTASH_REDIS_REST_TOKEN,
     KV_REST_API_URL: !!process.env.KV_REST_API_URL,
     KV_REST_API_TOKEN: !!process.env.KV_REST_API_TOKEN,
-    KV_URL: !!process.env.KV_URL,
     AUTH_SECRET: !!process.env.AUTH_SECRET,
     CRON_SECRET: !!process.env.CRON_SECRET,
   };
@@ -13,6 +13,7 @@ export async function GET() {
   let kvOk = false;
   let kvError: string | null = null;
   try {
+    const { kv } = await import('@/lib/kv');
     await kv.set('algent:healthcheck', Date.now(), { ex: 60 });
     const v = await kv.get<number>('algent:healthcheck');
     kvOk = typeof v === 'number';
