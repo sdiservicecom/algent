@@ -2,10 +2,13 @@
 
 import { useState } from 'react';
 import { fmtOdds, fmtPoints } from '@/lib/format';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 
 interface PlayerOption {
   id: string;
-  label: string;
+  firstName: string;
+  lastName: string;
+  photoUrl: string | null;
   odds: number;
 }
 
@@ -42,14 +45,19 @@ export function BetForm({ matchId, playerA, playerB, balance, action }: Props) {
                 type="button"
                 key={p.id}
                 onClick={() => setPick(p.id)}
-                className={`rounded-md border p-3 text-left transition ${
+                className={`flex items-center gap-3 rounded-md border p-3 text-left transition ${
                   active
                     ? 'border-accent bg-accent/10'
                     : 'border-border bg-bg/40 hover:border-white/30'
                 }`}
               >
-                <div className="font-medium">{p.label}</div>
-                <div className="text-sm text-accent">@ {fmtOdds(p.odds)}</div>
+                <PlayerAvatar player={p} size={40} />
+                <div className="min-w-0">
+                  <div className="truncate font-medium">
+                    {p.firstName} {p.lastName}
+                  </div>
+                  <div className="text-sm text-accent">@ {fmtOdds(p.odds)}</div>
+                </div>
               </button>
             );
           })}

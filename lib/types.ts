@@ -35,6 +35,7 @@ export interface Player {
   firstName: string;
   lastName: string;
   seed: number;
+  photoUrl: string | null;
   createdAt: string;
 }
 

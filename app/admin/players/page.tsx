@@ -7,6 +7,7 @@ import {
   deletePlayer,
   listPlayers,
 } from '@/lib/players';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 
 async function createPlayerAction(formData: FormData) {
   'use server';
@@ -14,11 +15,12 @@ async function createPlayerAction(formData: FormData) {
   const firstName = String(formData.get('firstName') ?? '').trim();
   const lastName = String(formData.get('lastName') ?? '').trim();
   const seed = Number(formData.get('seed'));
+  const photoUrl = String(formData.get('photoUrl') ?? '').trim() || null;
   if (!firstName || !lastName || !Number.isFinite(seed) || seed < 1) {
     return redirect('/admin/players?error=validation');
   }
   try {
-    await createPlayer({ firstName, lastName, seed });
+    await createPlayer({ firstName, lastName, seed, photoUrl });
   } catch (e) {
     if (e instanceof PlayerError && e.code === 'SEED_TAKEN') {
       return redirect('/admin/players?error=seed-taken');
@@ -60,7 +62,7 @@ export default async function AdminPlayersPage({
 
       <form
         action={createPlayerAction}
-        className="card grid grid-cols-1 gap-3 md:grid-cols-4"
+        className="card grid grid-cols-1 gap-3 md:grid-cols-6"
       >
         <div>
           <label className="label">Prénom</label>
@@ -80,13 +82,22 @@ export default async function AdminPlayersPage({
             className="input"
           />
         </div>
+        <div className="md:col-span-2">
+          <label className="label">URL photo (optionnel)</label>
+          <input
+            name="photoUrl"
+            type="url"
+            placeholder="https://…"
+            className="input"
+          />
+        </div>
         <div className="flex items-end">
           <button className="btn-primary w-full" type="submit">
             Ajouter
           </button>
         </div>
         {sp.error && (
-          <p className="md:col-span-4 text-sm text-danger">
+          <p className="md:col-span-6 text-sm text-danger">
             {sp.error === 'seed-taken'
               ? 'Ce seed est déjà attribué.'
               : sp.error === 'in-use'
@@ -95,7 +106,7 @@ export default async function AdminPlayersPage({
           </p>
         )}
         {sp.ok && (
-          <p className="md:col-span-4 text-sm text-success">Joueur ajouté.</p>
+          <p className="md:col-span-6 text-sm text-success">Joueur ajouté.</p>
         )}
       </form>
 
@@ -113,7 +124,12 @@ export default async function AdminPlayersPage({
               <tr key={p.id} className="border-b border-border/50">
                 <td className="px-3 py-2 font-mono">#{p.seed}</td>
                 <td className="px-3 py-2">
-                  {p.firstName} {p.lastName}
+                  <div className="flex items-center gap-3">
+                    <PlayerAvatar player={p} size={32} />
+                    <span>
+                      {p.firstName} {p.lastName}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-3 py-2 text-right">
                   <form action={deletePlayerAction} className="inline">

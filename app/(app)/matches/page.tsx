@@ -4,6 +4,7 @@ import { listMatches } from '@/lib/matches';
 import { listPlayers } from '@/lib/players';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
 import type { MatchStatus } from '@/lib/types';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 
 const STATUS_LABEL: Record<MatchStatus, { label: string; color: string }> = {
   SCHEDULED: { label: 'À venir', color: 'bg-white/10 text-white/70' },
@@ -48,19 +49,29 @@ export default async function MatchesPage() {
                     {fmtDateTime(m.startsAt)}
                   </span>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="font-semibold">
-                      {pa.firstName} {pa.lastName}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="flex flex-1 items-center gap-3">
+                    <PlayerAvatar player={pa} size={40} />
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold">
+                        {pa.firstName} {pa.lastName}
+                      </div>
+                      <div className="text-xs text-white/50">
+                        Seed #{pa.seed}
+                      </div>
                     </div>
-                    <div className="text-xs text-white/50">Seed #{pa.seed}</div>
                   </div>
-                  <div className="px-3 text-xs text-white/50">vs</div>
-                  <div className="flex-1 text-right">
-                    <div className="font-semibold">
-                      {pb.firstName} {pb.lastName}
+                  <div className="text-xs text-white/50">vs</div>
+                  <div className="flex flex-1 items-center justify-end gap-3 text-right">
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold">
+                        {pb.firstName} {pb.lastName}
+                      </div>
+                      <div className="text-xs text-white/50">
+                        Seed #{pb.seed}
+                      </div>
                     </div>
-                    <div className="text-xs text-white/50">Seed #{pb.seed}</div>
+                    <PlayerAvatar player={pb} size={40} />
                   </div>
                 </div>
 

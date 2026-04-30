@@ -9,6 +9,7 @@ import { getPlayer } from '@/lib/players';
 import { LOCK_BEFORE_START_MS } from '@/lib/odds';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
 import { BetForm } from '@/components/BetForm';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 
 async function placeBetAction(formData: FormData) {
   'use server';
@@ -75,25 +76,31 @@ export default async function MatchDetailPage({
         <div className="text-xs uppercase text-white/50">
           {fmtDateTime(match.startsAt)}
         </div>
-        <div className="mt-2 flex items-center justify-between">
-          <div className="flex-1">
-            <div className="text-xl font-bold">
-              {pa.firstName} {pa.lastName}
-            </div>
-            <div className="text-xs text-white/50">Seed #{pa.seed}</div>
-            <div className="mt-2 text-2xl font-bold text-accent">
-              {fmtOdds(match.oddsA)}
+        <div className="mt-2 flex items-center justify-between gap-4">
+          <div className="flex flex-1 items-center gap-3">
+            <PlayerAvatar player={pa} size={56} />
+            <div className="min-w-0">
+              <div className="truncate text-xl font-bold">
+                {pa.firstName} {pa.lastName}
+              </div>
+              <div className="text-xs text-white/50">Seed #{pa.seed}</div>
+              <div className="mt-1 text-2xl font-bold text-accent">
+                {fmtOdds(match.oddsA)}
+              </div>
             </div>
           </div>
-          <div className="px-4 text-white/40">vs</div>
-          <div className="flex-1 text-right">
-            <div className="text-xl font-bold">
-              {pb.firstName} {pb.lastName}
+          <div className="text-white/40">vs</div>
+          <div className="flex flex-1 items-center justify-end gap-3 text-right">
+            <div className="min-w-0">
+              <div className="truncate text-xl font-bold">
+                {pb.firstName} {pb.lastName}
+              </div>
+              <div className="text-xs text-white/50">Seed #{pb.seed}</div>
+              <div className="mt-1 text-2xl font-bold text-accent">
+                {fmtOdds(match.oddsB)}
+              </div>
             </div>
-            <div className="text-xs text-white/50">Seed #{pb.seed}</div>
-            <div className="mt-2 text-2xl font-bold text-accent">
-              {fmtOdds(match.oddsB)}
-            </div>
+            <PlayerAvatar player={pb} size={56} />
           </div>
         </div>
 
@@ -142,12 +149,16 @@ export default async function MatchDetailPage({
           matchId={match.id}
           playerA={{
             id: pa.id,
-            label: `${pa.firstName} ${pa.lastName}`,
+            firstName: pa.firstName,
+            lastName: pa.lastName,
+            photoUrl: pa.photoUrl,
             odds: match.oddsA,
           }}
           playerB={{
             id: pb.id,
-            label: `${pb.firstName} ${pb.lastName}`,
+            firstName: pb.firstName,
+            lastName: pb.lastName,
+            photoUrl: pb.photoUrl,
             odds: match.oddsB,
           }}
           balance={user.balance}

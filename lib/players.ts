@@ -9,7 +9,10 @@ export class PlayerError extends Error {
 }
 
 export async function getPlayer(id: string): Promise<Player | null> {
-  return kv.get<Player>(K.player(id));
+  const raw = await kv.get<Partial<Player> & { id?: string }>(K.player(id));
+  if (!raw || !raw.id) return null;
+  // Compat: les joueurs créés avant l'ajout de photoUrl n'ont pas le champ.
+  return { photoUrl: null, ...raw } as Player;
 }
 
 export async function listPlayers(): Promise<Player[]> {
@@ -23,6 +26,7 @@ export async function createPlayer(input: {
   firstName: string;
   lastName: string;
   seed: number;
+  photoUrl?: string | null;
 }): Promise<Player> {
   const taken = await kv.set(K.playerBySeed(input.seed), '__placeholder__', {
     nx: true,
@@ -34,6 +38,7 @@ export async function createPlayer(input: {
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
     seed: input.seed,
+    photoUrl: normalizePhotoUrl(input.photoUrl),
     createdAt: new Date().toISOString(),
   };
 
@@ -42,6 +47,19 @@ export async function createPlayer(input: {
   await kv.zadd(K.playersByseed(), { score: player.seed, member: player.id });
 
   return player;
+}
+
+function normalizePhotoUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const u = new URL(trimmed);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
 }
 
 export async function deletePlayer(id: string): Promise<void> {
