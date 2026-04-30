@@ -11,8 +11,14 @@ export class PlayerError extends Error {
 export async function getPlayer(id: string): Promise<Player | null> {
   const raw = await kv.get<Partial<Player> & { id?: string }>(K.player(id));
   if (!raw || !raw.id) return null;
-  // Compat: les joueurs créés avant l'ajout de nickname / photoUrl.
-  return { nickname: null, photoUrl: null, ...raw } as Player;
+  // Compat: les joueurs créés avant l'ajout de nickname / photoUrl /
+  // linkedUserId reçoivent les champs manquants en null.
+  return {
+    nickname: null,
+    photoUrl: null,
+    linkedUserId: null,
+    ...raw,
+  } as Player;
 }
 
 export async function listPlayers(): Promise<Player[]> {
@@ -43,6 +49,7 @@ export async function createPlayer(input: {
     nickname: nickname && nickname.length > 0 ? nickname : null,
     seed: input.seed,
     photoUrl: normalizePhotoUrl(input.photoUrl),
+    linkedUserId: null,
     createdAt: new Date().toISOString(),
   };
 
@@ -75,6 +82,8 @@ export async function updatePlayer(
     seed?: number;
     /** undefined = ne pas toucher, string = remplacer, null = supprimer. */
     photoUrl?: string | null;
+    /** undefined = ne pas toucher, string = lier au user, null = délier. */
+    linkedUserId?: string | null;
   },
 ): Promise<Player> {
   const current = await getPlayer(id);
@@ -104,6 +113,11 @@ export async function updatePlayer(
     nextPhotoUrl = input.photoUrl === null ? null : normalizePhotoUrl(input.photoUrl);
   }
 
+  let nextLinkedUserId = current.linkedUserId;
+  if (input.linkedUserId !== undefined) {
+    nextLinkedUserId = input.linkedUserId || null;
+  }
+
   const updated: Player = {
     ...current,
     firstName: input.firstName?.trim() ?? current.firstName,
@@ -111,6 +125,7 @@ export async function updatePlayer(
     nickname: nextNickname,
     seed: nextSeed,
     photoUrl: nextPhotoUrl,
+    linkedUserId: nextLinkedUserId,
   };
 
   await kv.set(K.player(id), updated);

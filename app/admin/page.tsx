@@ -1,6 +1,8 @@
-import { listMatches } from '@/lib/matches';
-import { listPlayers } from '@/lib/players';
-import { listUsers } from '@/lib/users';
+import {
+  cachedListMatches as listMatches,
+  cachedListPlayers as listPlayers,
+  cachedListUsers as listUsers,
+} from '@/lib/cache';
 import { fmtPoints } from '@/lib/format';
 
 export default async function AdminHome() {

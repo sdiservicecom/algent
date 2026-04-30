@@ -5,6 +5,7 @@ import { BetError, placeBet } from '@/lib/bets';
 import { WalletError } from '@/lib/wallet';
 import { checkLimit, limits } from '@/lib/ratelimit';
 import { reserveIdempotencyKey } from '@/lib/idempotency';
+import { bumpCache } from '@/lib/cache';
 
 interface BatchItem {
   matchId: string;
@@ -71,6 +72,8 @@ export async function POST(req: Request) {
     }
   }
 
+  if (placed.length > 0)
+    bumpCache('matches', 'leaderboard', 'user-bets', 'user-tx');
   revalidatePath('/matches');
   revalidatePath('/dashboard');
 

@@ -49,6 +49,8 @@ export interface Player {
   nickname: string | null;
   seed: number;
   photoUrl: string | null;
+  /** Optionnel : userId d'un compte associé à ce joueur. */
+  linkedUserId: string | null;
   createdAt: string;
 }
 
@@ -61,6 +63,9 @@ export interface Match {
   round: MatchRound | null;
   bracketSlot: number | null;
   winnerId: string | null;
+  /** Score final (sets gagnés par chaque joueur), saisi par l'admin au règlement. */
+  scoreA: number | null;
+  scoreB: number | null;
   oddsA: number;
   oddsB: number;
   totalStakeA: number;
@@ -78,6 +83,14 @@ export interface Bet {
   status: BetStatus;
   potentialWin: number;
   payout: number | null;
+  /**
+   * Pronostic optionnel du score exact. Si renseigné et que le score réel
+   * du match correspond, l'utilisateur gagne un bonus en plus du payout
+   * habituel (cf. SCORE_BONUS_MULTIPLIER).
+   */
+  scoreGuessA: number | null;
+  scoreGuessB: number | null;
+  scoreBonus: number | null;
   placedAt: string;
   settledAt: string | null;
 }

@@ -1,21 +1,26 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { getUser } from '@/lib/users';
-import { listUserBets } from '@/lib/bets';
-import { getMatch } from '@/lib/matches';
-import { getPlayer } from '@/lib/players';
-import { hasReceivedTodayBonus } from '@/lib/daily-bonus';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
-import { getLeaderboard } from '@/lib/leaderboard';
+import {
+  cachedGetLeaderboard as getLeaderboard,
+  cachedHasReceivedTodayBonus as hasReceivedTodayBonus,
+  cachedListMatches,
+  cachedListPlayers,
+  cachedListUserBets,
+} from '@/lib/cache';
 
 export default async function DashboardPage() {
   const session = await requireUser();
-  const [user, allBets, bonus, leaderboard] = await Promise.all([
-    getUser(session.sub),
-    listUserBets(session.sub),
-    hasReceivedTodayBonus(session.sub),
-    getLeaderboard(),
-  ]);
+  const [user, allBets, bonus, leaderboard, allMatches, allPlayers] =
+    await Promise.all([
+      getUser(session.sub),
+      cachedListUserBets(session.sub),
+      hasReceivedTodayBonus(session.sub),
+      getLeaderboard(),
+      cachedListMatches(),
+      cachedListPlayers(),
+    ]);
   if (!user) return null;
 
   const activeBets = allBets.filter((b) => b.status === 'PENDING');
@@ -23,23 +28,8 @@ export default async function DashboardPage() {
     .filter((b) => b.status === 'WON' || b.status === 'LOST')
     .slice(0, 5);
 
-  // Hydrate matchs + joueurs
-  const matchIds = Array.from(
-    new Set([...activeBets, ...lastSettled].map((b) => b.matchId)),
-  );
-  const matches = Object.fromEntries(
-    (await Promise.all(matchIds.map(getMatch)))
-      .filter((m) => !!m)
-      .map((m) => [m!.id, m!]),
-  );
-  const playerIds = Array.from(
-    new Set(Object.values(matches).flatMap((m) => [m.playerAId, m.playerBId])),
-  );
-  const players = Object.fromEntries(
-    (await Promise.all(playerIds.map(getPlayer)))
-      .filter((p) => !!p)
-      .map((p) => [p!.id, p!]),
-  );
+  const matches = Object.fromEntries(allMatches.map((m) => [m.id, m]));
+  const players = Object.fromEntries(allPlayers.map((p) => [p.id, p]));
 
   const myRank = leaderboard.find((r) => r.userId === session.sub);
 

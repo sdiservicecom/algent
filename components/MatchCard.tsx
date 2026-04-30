@@ -26,9 +26,10 @@ interface Props {
   pa: Player;
   pb: Player;
   winner: Player | null;
+  viewerUserId?: string | null;
 }
 
-export function MatchCard({ match, pa, pb, winner }: Props) {
+export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
   const { isPicked, toggle } = useBasket();
   const total = match.totalStakeA + match.totalStakeB;
   const ratioA = total > 0 ? match.totalStakeA / total : 0.5;
@@ -123,6 +124,11 @@ export function MatchCard({ match, pa, pb, winner }: Props) {
           <div className="min-w-0">
             <div className="truncate font-semibold">
               {pa.firstName} {pa.lastName}
+              {viewerUserId && pa.linkedUserId === viewerUserId && (
+                <span className="ml-2 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+                  Vous
+                </span>
+              )}
             </div>
             {pa.nickname && (
               <div className="truncate text-xs text-fg/60">
@@ -137,6 +143,11 @@ export function MatchCard({ match, pa, pb, winner }: Props) {
           <div className="min-w-0">
             <div className="truncate font-semibold">
               {pb.firstName} {pb.lastName}
+              {viewerUserId && pb.linkedUserId === viewerUserId && (
+                <span className="ml-2 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+                  Vous
+                </span>
+              )}
             </div>
             {pb.nickname && (
               <div className="truncate text-xs text-fg/60">

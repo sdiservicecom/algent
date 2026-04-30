@@ -2,8 +2,12 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
-import { createMatch, listMatches } from '@/lib/matches';
-import { listPlayers } from '@/lib/players';
+import { createMatch } from '@/lib/matches';
+import {
+  bumpCache,
+  cachedListMatches as listMatches,
+  cachedListPlayers as listPlayers,
+} from '@/lib/cache';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import {
   MATCH_ROUNDS,
@@ -34,6 +38,7 @@ async function createMatchAction(formData: FormData) {
       ? Math.floor(Number(slotRaw))
       : null;
   await createMatch({ playerAId, playerBId, startsAt, round, bracketSlot });
+  bumpCache('matches');
   revalidatePath('/admin/matches');
   revalidatePath('/matches');
   revalidatePath('/bracket');
@@ -127,7 +132,7 @@ export default async function AdminMatchesPage({
       </form>
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        <table className="table-stack w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
               <th className="px-3 py-2">Date</th>
@@ -144,25 +149,25 @@ export default async function AdminMatchesPage({
               const pb = playerMap[m.playerBId];
               return (
                 <tr key={m.id} className="border-b border-border/50">
-                  <td className="px-3 py-2 text-fg/60">
+                  <td data-label="Date" className="px-3 py-2 text-fg/60">
                     {fmtDateTime(m.startsAt)}
                   </td>
-                  <td className="px-3 py-2">
+                  <td data-label="Match" className="px-3 py-2">
                     {pa ? fmtPlayerName(pa) : '?'} vs{' '}
                     {pb ? fmtPlayerName(pb) : '?'}
                   </td>
-                  <td className="px-3 py-2 font-mono">
+                  <td data-label="Cotes" className="px-3 py-2 font-mono">
                     {fmtOdds(m.oddsA)} / {fmtOdds(m.oddsB)}
                   </td>
-                  <td className="px-3 py-2 text-xs text-fg/60">
+                  <td data-label="Mises" className="px-3 py-2 text-xs text-fg/60">
                     {fmtPoints(m.totalStakeA)} / {fmtPoints(m.totalStakeB)}
                   </td>
-                  <td className="px-3 py-2">
+                  <td data-label="Statut" className="px-3 py-2">
                     <span className="pill bg-fg/10 text-fg/70">
                       {m.status}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td data-label="Action" className="px-3 py-2 text-right">
                     <Link
                       href={`/admin/matches/${m.id}`}
                       className="btn-secondary"

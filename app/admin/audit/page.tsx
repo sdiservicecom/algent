@@ -33,7 +33,7 @@ export default async function AuditPage() {
         <div className="card text-sm text-fg/60">Aucune action enregistrée.</div>
       ) : (
         <div className="card overflow-x-auto p-0">
-          <table className="w-full min-w-[700px] text-sm">
+          <table className="table-stack w-full text-sm md:min-w-[700px]">
             <thead>
               <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                 <th className="px-3 py-2">Date</th>
@@ -46,17 +46,19 @@ export default async function AuditPage() {
             <tbody>
               {entries.map((e) => (
                 <tr key={e.id} className="border-b border-border/50">
-                  <td className="px-3 py-2 text-fg/60">
+                  <td data-label="Date" className="px-3 py-2 text-fg/60">
                     {fmtDateTime(e.createdAt)}
                   </td>
-                  <td className="px-3 py-2 font-medium">{e.adminUsername}</td>
-                  <td className="px-3 py-2">
+                  <td data-label="Admin" className="px-3 py-2 font-medium">
+                    {e.adminUsername}
+                  </td>
+                  <td data-label="Action" className="px-3 py-2">
                     {ACTION_LABEL[e.action] ?? e.action}
                   </td>
-                  <td className="px-3 py-2 text-fg/70">
+                  <td data-label="Cible" className="px-3 py-2 text-fg/70">
                     {e.targetLabel ?? e.targetId ?? '—'}
                   </td>
-                  <td className="px-3 py-2 text-xs text-fg/60">
+                  <td data-label="Détails" className="px-3 py-2 text-xs text-fg/60">
                     {e.metadata ? (
                       <code className="font-mono">
                         {JSON.stringify(e.metadata)}

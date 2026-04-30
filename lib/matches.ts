@@ -1,5 +1,5 @@
 import { K, kv, newId } from './kv';
-import { computeInitialOdds } from './odds';
+import { SCORE_BONUS_MULTIPLIER, computeInitialOdds } from './odds';
 import {
   MATCH_ROUNDS,
   type Bet,
@@ -66,6 +66,8 @@ export async function createMatch(input: {
     winnerId: '',
     round: input.round ?? '',
     bracketSlot: input.bracketSlot ?? '',
+    scoreA: '',
+    scoreB: '',
     oddsA: odds.oddsA,
     oddsB: odds.oddsB,
     totalStakeA: 0,
@@ -110,7 +112,11 @@ export async function transitionMatchStatus(
   await kv.hset(K.match(matchId), { status: next });
 }
 
-export async function settleMatch(matchId: string, winnerId: string): Promise<void> {
+export async function settleMatch(
+  matchId: string,
+  winnerId: string,
+  finalScore?: { scoreA: number; scoreB: number },
+): Promise<void> {
   const match = await getMatch(matchId);
   if (!match) throw new MatchError('MATCH_NOT_FOUND');
   if (![match.playerAId, match.playerBId].includes(winnerId)) {
@@ -118,6 +124,17 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
   }
   if (match.status === 'SETTLED' || match.status === 'CANCELLED') {
     throw new MatchError('ALREADY_FINALIZED');
+  }
+
+  // Vérifie la cohérence score / vainqueur si les deux sont fournis.
+  if (finalScore) {
+    const winnerIsA = winnerId === match.playerAId;
+    if (winnerIsA && finalScore.scoreA <= finalScore.scoreB) {
+      throw new MatchError('INVALID_WINNER');
+    }
+    if (!winnerIsA && finalScore.scoreB <= finalScore.scoreA) {
+      throw new MatchError('INVALID_WINNER');
+    }
   }
 
   const pendingIds = await kv.smembers(K.pendingBetsByMatch(matchId));
@@ -138,24 +155,38 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
 
     const won = bet.pickedPlayerId === winnerId;
     if (won) {
-      const payout = Math.floor(bet.stake * bet.oddsAtBet);
+      const basePayout = Math.floor(bet.stake * bet.oddsAtBet);
+      const scoreCorrect =
+        finalScore != null &&
+        bet.scoreGuessA != null &&
+        bet.scoreGuessB != null &&
+        bet.scoreGuessA === finalScore.scoreA &&
+        bet.scoreGuessB === finalScore.scoreB;
+      const scoreBonus = scoreCorrect
+        ? Math.floor(bet.stake * SCORE_BONUS_MULTIPLIER)
+        : 0;
+      const payout = basePayout + scoreBonus;
       const updated: Bet = {
         ...bet,
         status: 'WON',
         payout,
+        scoreBonus: scoreBonus || null,
         settledAt: new Date().toISOString(),
       };
       await kv.set(K.bet(betId), updated);
       await applyWalletDelta(bet.userId, payout, 'BET_WON', {
         betId,
         matchId,
+        metadata: scoreBonus ? { scoreBonus } : undefined,
       });
       notifications.push(
         createNotification({
           userId: bet.userId,
           kind: 'BET_WON',
-          title: 'Pari gagné',
-          body: `${matchLabel} — ${winnerLabel} l'emporte. +${payout} pts crédités.`,
+          title: scoreBonus ? 'Pari gagné + score exact 🎯' : 'Pari gagné',
+          body: scoreBonus
+            ? `${matchLabel} — ${winnerLabel} l'emporte ${finalScore!.scoreA}-${finalScore!.scoreB}. +${payout} pts (dont +${scoreBonus} de bonus score exact).`
+            : `${matchLabel} — ${winnerLabel} l'emporte. +${payout} pts crédités.`,
           url: '/history',
         }).then(() => undefined),
       );
@@ -186,7 +217,15 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
     ]);
   }
 
-  await kv.hset(K.match(matchId), { status: 'SETTLED', winnerId });
+  const finalUpdates: Record<string, string | number> = {
+    status: 'SETTLED',
+    winnerId,
+  };
+  if (finalScore) {
+    finalUpdates.scoreA = finalScore.scoreA;
+    finalUpdates.scoreB = finalScore.scoreB;
+  }
+  await kv.hset(K.match(matchId), finalUpdates);
   await Promise.allSettled(notifications);
 
   // Met à jour les paris combinés qui touchent ce match
@@ -376,6 +415,11 @@ function parseMatch(id: string, raw: Record<string, string | number>): Match {
   const winnerId = raw.winnerId ? String(raw.winnerId) : '';
   const roundRaw = raw.round ? String(raw.round) : '';
   const slotRaw = raw.bracketSlot;
+  const optInt = (v: unknown): number | null => {
+    if (v === undefined || v === null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
   return {
     id,
     playerAId: String(raw.playerAId ?? ''),
@@ -388,6 +432,8 @@ function parseMatch(id: string, raw: Record<string, string | number>): Match {
         ? null
         : Number(slotRaw),
     winnerId: winnerId.length > 0 ? winnerId : null,
+    scoreA: optInt(raw.scoreA),
+    scoreB: optInt(raw.scoreB),
     oddsA: Number(raw.oddsA ?? 0),
     oddsB: Number(raw.oddsB ?? 0),
     totalStakeA: Number(raw.totalStakeA ?? 0),

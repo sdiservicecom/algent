@@ -2,12 +2,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import Link from 'next/link';
-import {
-  PlayerError,
-  createPlayer,
-  deletePlayer,
-  listPlayers,
-} from '@/lib/players';
+import { PlayerError, createPlayer, deletePlayer } from '@/lib/players';
+import { bumpCache, cachedListPlayers as listPlayers } from '@/lib/cache';
 import { UploadError, uploadPlayerPhoto } from '@/lib/upload';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { fmtPlayerName } from '@/lib/format';
@@ -45,6 +41,7 @@ async function createPlayerAction(formData: FormData) {
     }
     return redirect('/admin/players?error=validation');
   }
+  bumpCache('players');
   revalidatePath('/admin/players');
   redirect('/admin/players?ok=1');
 }
@@ -61,6 +58,7 @@ async function deletePlayerAction(formData: FormData) {
     }
     throw e;
   }
+  bumpCache('players');
   revalidatePath('/admin/players');
   redirect('/admin/players');
 }
@@ -139,7 +137,7 @@ export default async function AdminPlayersPage({
       </form>
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        <table className="table-stack w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
               <th className="px-3 py-2">Seed</th>
@@ -150,14 +148,14 @@ export default async function AdminPlayersPage({
           <tbody>
             {players.map((p) => (
               <tr key={p.id} className="border-b border-border/50">
-                <td className="px-3 py-2 font-mono">#{p.seed}</td>
-                <td className="px-3 py-2">
+                <td data-label="Seed" className="px-3 py-2 font-mono">#{p.seed}</td>
+                <td data-label="Joueur" className="px-3 py-2">
                   <div className="flex items-center gap-3">
                     <PlayerAvatar player={p} size={32} />
                     <span>{fmtPlayerName(p)}</span>
                   </div>
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td data-label="Actions" className="px-3 py-2 text-right">
                   <div className="flex justify-end gap-2">
                     <Link
                       href={`/admin/players/${p.id}`}

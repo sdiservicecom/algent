@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { clearSessionCookie, getCurrentUser } from '@/lib/auth';
 import { fmtPoints } from '@/lib/format';
-import { listMatches } from '@/lib/matches';
-import { listPlayers } from '@/lib/players';
+import {
+  cachedListMatches as listMatches,
+  cachedListPlayers as listPlayers,
+} from '@/lib/cache';
 import { UpcomingMatchesBanner } from '@/components/UpcomingMatchesBanner';
 import { BasketProvider } from '@/components/BasketContext';
 import { FloatingBetBasket } from '@/components/FloatingBetBasket';

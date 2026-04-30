@@ -29,6 +29,8 @@ export interface PlaceBetInput {
   matchId: string;
   pickedPlayerId: string;
   stake: number;
+  scoreGuessA?: number | null;
+  scoreGuessB?: number | null;
 }
 
 export async function placeBet(input: PlaceBetInput): Promise<Bet> {
@@ -89,6 +91,15 @@ export async function placeBet(input: PlaceBetInput): Promise<Bet> {
     status: 'PENDING',
     potentialWin,
     payout: null,
+    scoreGuessA:
+      typeof input.scoreGuessA === 'number' && Number.isFinite(input.scoreGuessA)
+        ? Math.max(0, Math.floor(input.scoreGuessA))
+        : null,
+    scoreGuessB:
+      typeof input.scoreGuessB === 'number' && Number.isFinite(input.scoreGuessB)
+        ? Math.max(0, Math.floor(input.scoreGuessB))
+        : null,
+    scoreBonus: null,
     placedAt,
     settledAt: null,
   };

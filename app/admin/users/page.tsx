@@ -1,12 +1,8 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
-import {
-  adjustUserBalance,
-  getUser,
-  listUsers,
-  setUserRole,
-} from '@/lib/users';
+import { adjustUserBalance, getUser, setUserRole } from '@/lib/users';
+import { bumpCache, cachedListUsers as listUsers } from '@/lib/cache';
 import { logAudit } from '@/lib/audit';
 import { fmtPoints } from '@/lib/format';
 
@@ -24,6 +20,7 @@ async function promote(formData: FormData) {
     targetId: id,
     targetLabel: target.username,
   });
+  bumpCache('users', 'leaderboard');
   revalidatePath('/admin/users');
 }
 
@@ -50,6 +47,7 @@ async function demote(formData: FormData) {
     targetId: id,
     targetLabel: target.username,
   });
+  bumpCache('users', 'leaderboard');
   revalidatePath('/admin/users');
 }
 
@@ -77,6 +75,7 @@ async function adjust(formData: FormData) {
     targetLabel: target.username,
     metadata: { amount, reason },
   });
+  bumpCache('users', 'leaderboard');
   revalidatePath('/admin/users');
 }
 
@@ -105,7 +104,7 @@ export default async function AdminUsersPage({
       )}
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full min-w-[700px] text-sm">
+        <table className="table-stack w-full text-sm md:min-w-[700px]">
           <thead>
             <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
               <th className="px-3 py-2">Utilisateur</th>
@@ -120,13 +119,13 @@ export default async function AdminUsersPage({
               const isMe = u.id === session.sub;
               return (
                 <tr key={u.id} className="border-b border-border/50">
-                  <td className="px-3 py-2">
+                  <td data-label="Utilisateur" className="px-3 py-2">
                     <div className="font-medium">{u.username}</div>
                     <div className="text-xs text-fg/50">
                       {u.firstName} {u.lastName}
                     </div>
                   </td>
-                  <td className="px-3 py-2">
+                  <td data-label="Rôle" className="px-3 py-2">
                     <span
                       className={`pill ${
                         u.role === 'ADMIN'
@@ -137,10 +136,13 @@ export default async function AdminUsersPage({
                       {u.role}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right font-mono">
+                  <td
+                    data-label="Solde"
+                    className="px-3 py-2 text-right font-mono"
+                  >
                     {fmtPoints(u.balance)}
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td data-label="Ajuster" className="px-3 py-2 text-right">
                     <form
                       action={adjust}
                       className="flex items-center justify-end gap-1"
@@ -163,7 +165,7 @@ export default async function AdminUsersPage({
                       </button>
                     </form>
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td data-label="Action" className="px-3 py-2 text-right">
                     {u.role === 'USER' ? (
                       <form action={promote}>
                         <input type="hidden" name="id" value={u.id} />

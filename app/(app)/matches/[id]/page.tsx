@@ -18,6 +18,15 @@ async function placeBetAction(formData: FormData) {
   const matchId = String(formData.get('matchId'));
   const pickedPlayerId = String(formData.get('pickedPlayerId'));
   const stake = Number(formData.get('stake'));
+  const scoreGuessA = formData.get('scoreGuessA');
+  const scoreGuessB = formData.get('scoreGuessB');
+  const parseScore = (raw: FormDataEntryValue | null): number | null => {
+    if (raw == null) return null;
+    const s = String(raw).trim();
+    if (s === '') return null;
+    const n = Number(s);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+  };
   if (!matchId || !pickedPlayerId || !Number.isFinite(stake)) {
     return redirect(`/matches/${matchId}?error=validation`);
   }
@@ -27,6 +36,8 @@ async function placeBetAction(formData: FormData) {
       matchId,
       pickedPlayerId,
       stake: Math.floor(stake),
+      scoreGuessA: parseScore(scoreGuessA),
+      scoreGuessB: parseScore(scoreGuessB),
     });
   } catch (e) {
     if (e instanceof BetError || e instanceof WalletError) {
@@ -73,6 +84,15 @@ export default async function MatchDetailPage({
   const settled = match.status === 'SETTLED' && winner;
   const aIsWinner = settled && winner!.id === pa.id;
   const bIsWinner = settled && winner!.id === pb.id;
+  const hasFinalScore =
+    settled && match.scoreA !== null && match.scoreB !== null;
+  const myScoreCorrect =
+    !!myBet &&
+    hasFinalScore &&
+    myBet.scoreGuessA != null &&
+    myBet.scoreGuessB != null &&
+    myBet.scoreGuessA === match.scoreA &&
+    myBet.scoreGuessB === match.scoreB;
 
   return (
     <div className="space-y-6">
@@ -174,6 +194,14 @@ export default async function MatchDetailPage({
             </div>
           </div>
         )}
+        {hasFinalScore && (
+          <div className="mt-3 text-center text-sm">
+            <span className="text-fg/60">Score final&nbsp;:</span>{' '}
+            <span className="font-mono font-semibold text-success">
+              {match.scoreA} – {match.scoreB}
+            </span>
+          </div>
+        )}
       </header>
 
       {sp.ok && (
@@ -201,6 +229,17 @@ export default async function MatchDetailPage({
               {fmtPoints(myBet.potentialWin)} pts
             </span>
           </p>
+          {myBet.scoreGuessA != null && myBet.scoreGuessB != null && (
+            <p className="mt-1 text-xs text-fg/60">
+              Pronostic du score :{' '}
+              <span className="font-mono font-semibold text-fg/80">
+                {myBet.scoreGuessA} – {myBet.scoreGuessB}
+              </span>
+              {myScoreCorrect && (
+                <span className="ml-2 text-success">🎯 score exact !</span>
+              )}
+            </p>
+          )}
         </div>
       ) : canBet ? (
         <BetForm
@@ -270,7 +309,7 @@ export default async function MatchDetailPage({
         <section>
           <h2 className="mb-2 text-lg font-semibold">Historique des cotes</h2>
           <div className="card overflow-x-auto p-0">
-            <table className="w-full text-sm">
+            <table className="table-stack w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                   <th className="px-3 py-2">Date</th>
@@ -284,14 +323,22 @@ export default async function MatchDetailPage({
               <tbody>
                 {snapshots.map((s, i) => (
                   <tr key={i} className="border-b border-border/50">
-                    <td className="px-3 py-2 text-fg/60">
+                    <td data-label="Date" className="px-3 py-2 text-fg/60">
                       {fmtDateTime(s.createdAt)}
                     </td>
-                    <td className="px-3 py-2 font-mono">{fmtOdds(s.oddsA)}</td>
-                    <td className="px-3 py-2 font-mono">{fmtOdds(s.oddsB)}</td>
-                    <td className="px-3 py-2">{fmtPoints(s.totalStakeA)}</td>
-                    <td className="px-3 py-2">{fmtPoints(s.totalStakeB)}</td>
-                    <td className="px-3 py-2 text-xs text-fg/50">
+                    <td data-label="Cote A" className="px-3 py-2 font-mono">
+                      {fmtOdds(s.oddsA)}
+                    </td>
+                    <td data-label="Cote B" className="px-3 py-2 font-mono">
+                      {fmtOdds(s.oddsB)}
+                    </td>
+                    <td data-label="Mises A" className="px-3 py-2">
+                      {fmtPoints(s.totalStakeA)}
+                    </td>
+                    <td data-label="Mises B" className="px-3 py-2">
+                      {fmtPoints(s.totalStakeB)}
+                    </td>
+                    <td data-label="Cause" className="px-3 py-2 text-xs text-fg/50">
                       {s.reason}
                     </td>
                   </tr>

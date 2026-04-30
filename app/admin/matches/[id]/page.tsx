@@ -12,6 +12,7 @@ import { listMatchBets } from '@/lib/bets';
 import { getPlayer, listPlayers } from '@/lib/players';
 import { getUser } from '@/lib/users';
 import { logAudit } from '@/lib/audit';
+import { bumpCache } from '@/lib/cache';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 
 async function open(formData: FormData) {
@@ -25,6 +26,7 @@ async function open(formData: FormData) {
     action: 'MATCH_OPEN',
     targetId: id,
   });
+  bumpCache('matches', 'leaderboard');
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
 }
@@ -48,6 +50,22 @@ async function settle(formData: FormData) {
   const session = await requireAdmin();
   const id = String(formData.get('id'));
   const winnerId = String(formData.get('winnerId'));
+  const scoreARaw = formData.get('scoreA');
+  const scoreBRaw = formData.get('scoreB');
+  const parseScore = (raw: FormDataEntryValue | null): number | null => {
+    if (raw == null) return null;
+    const s = String(raw).trim();
+    if (s === '') return null;
+    const n = Number(s);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+  };
+  const scoreA = parseScore(scoreARaw);
+  const scoreB = parseScore(scoreBRaw);
+  const finalScore =
+    scoreA != null && scoreB != null
+      ? { scoreA, scoreB }
+      : undefined;
+
   const match = await getMatch(id);
   if (!match) return;
 
@@ -62,14 +80,15 @@ async function settle(formData: FormData) {
   } else if (match.status === 'IN_PROGRESS') {
     await transitionMatchStatus(id, 'FINISHED');
   }
-  await settleMatch(id, winnerId);
+  await settleMatch(id, winnerId, finalScore);
   await logAudit({
     adminId: session.sub,
     adminUsername: session.username,
     action: 'MATCH_SETTLE',
     targetId: id,
-    metadata: { winnerId },
+    metadata: { winnerId, scoreA, scoreB },
   });
+  bumpCache('matches', 'leaderboard', 'users');
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
   revalidatePath('/leaderboard');
@@ -86,6 +105,7 @@ async function cancel(formData: FormData) {
     action: 'MATCH_CANCEL',
     targetId: id,
   });
+  bumpCache('matches', 'leaderboard');
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
 }
@@ -257,6 +277,10 @@ export default async function AdminMatchDetailPage({
       {match.status !== 'SETTLED' && match.status !== 'CANCELLED' && (
         <section className="card">
           <h2 className="mb-3 text-lg font-semibold">Saisir le vainqueur</h2>
+          <p className="mb-3 text-xs text-fg/60">
+            Les scores sont optionnels. S'ils sont renseignés, les paris avec un
+            pronostic exact reçoivent un bonus égal à leur mise.
+          </p>
           <form action={settle} className="flex flex-wrap items-end gap-3">
             <input type="hidden" name="id" value={match.id} />
             <div className="flex-1 min-w-[200px]">
@@ -266,6 +290,26 @@ export default async function AdminMatchDetailPage({
                 <option value={match.playerAId}>{fmtPlayerName(pa)}</option>
                 <option value={match.playerBId}>{fmtPlayerName(pb)}</option>
               </select>
+            </div>
+            <div>
+              <label className="label">Score {pa.firstName}</label>
+              <input
+                name="scoreA"
+                type="number"
+                min={0}
+                max={9}
+                className="input w-20 text-center"
+              />
+            </div>
+            <div>
+              <label className="label">Score {pb.firstName}</label>
+              <input
+                name="scoreB"
+                type="number"
+                min={0}
+                max={9}
+                className="input w-20 text-center"
+              />
             </div>
             <button className="btn-primary" type="submit">
               Valider et calculer les gains
@@ -277,7 +321,7 @@ export default async function AdminMatchDetailPage({
       <section>
         <h2 className="mb-3 text-lg font-semibold">Paris ({bets.length})</h2>
         <div className="card overflow-x-auto p-0">
-          <table className="w-full text-sm">
+          <table className="table-stack w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                 <th className="px-3 py-2">Joueur</th>
@@ -295,18 +339,25 @@ export default async function AdminMatchDetailPage({
                 const u = users[b.userId];
                 return (
                   <tr key={b.id} className="border-b border-border/50">
-                    <td className="px-3 py-2">{u?.username ?? '—'}</td>
-                    <td className="px-3 py-2">{fmtPlayerName(picked)}</td>
-                    <td className="px-3 py-2 font-mono">
+                    <td data-label="Joueur" className="px-3 py-2">
+                      {u?.username ?? '—'}
+                    </td>
+                    <td data-label="Pari sur" className="px-3 py-2">
+                      {fmtPlayerName(picked)}
+                    </td>
+                    <td data-label="Cote" className="px-3 py-2 font-mono">
                       {fmtOdds(b.oddsAtBet)}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td data-label="Mise" className="px-3 py-2 text-right">
                       {fmtPoints(b.stake)}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td
+                      data-label="Gain potentiel"
+                      className="px-3 py-2 text-right"
+                    >
                       {fmtPoints(b.potentialWin)}
                     </td>
-                    <td className="px-3 py-2">{b.status}</td>
+                    <td data-label="Statut" className="px-3 py-2">{b.status}</td>
                   </tr>
                 );
               })}

@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
-import { listMatches } from '@/lib/matches';
-import { listPlayers } from '@/lib/players';
+import {
+  cachedListMatches as listMatches,
+  cachedListPlayers as listPlayers,
+} from '@/lib/cache';
 import { MatchCard } from '@/components/MatchCard';
 import {
   MATCH_ROUNDS,
@@ -24,7 +26,7 @@ export default async function MatchesPage({
 }: {
   searchParams: Promise<{ status?: string; round?: string }>;
 }) {
-  await requireUser();
+  const session = await requireUser();
   const sp = await searchParams;
   const statusFilter = (sp.status ?? 'ALL') as MatchStatus | 'ALL';
   const roundFilter = (sp.round ?? 'ALL') as MatchRound | 'ALL';
@@ -120,6 +122,7 @@ export default async function MatchesPage({
                 pa={pa}
                 pb={pb}
                 winner={winner}
+                viewerUserId={session.sub}
               />
             );
           })}

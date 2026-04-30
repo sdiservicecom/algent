@@ -10,6 +10,7 @@ import {
 import { UploadError, uploadPlayerPhoto } from '@/lib/upload';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { fmtPlayerName } from '@/lib/format';
+import { bumpCache, cachedListUsers } from '@/lib/cache';
 
 async function updatePlayerAction(formData: FormData) {
   'use server';
@@ -22,6 +23,8 @@ async function updatePlayerAction(formData: FormData) {
   const photoFile = formData.get('photoFile') as File | null;
   const pastedUrl = String(formData.get('photoUrl') ?? '').trim();
   const removePhoto = formData.get('removePhoto') === 'on';
+  const linkedUserIdRaw = String(formData.get('linkedUserId') ?? '');
+  const linkedUserId = linkedUserIdRaw === '' ? null : linkedUserIdRaw;
 
   if (!id || !firstName || !lastName || !Number.isFinite(seed) || seed < 1) {
     return redirect(`/admin/players/${id}?error=validation`);
@@ -55,6 +58,7 @@ async function updatePlayerAction(formData: FormData) {
       lastName,
       nickname,
       seed,
+      linkedUserId,
       ...(photoUrl !== undefined ? { photoUrl } : {}),
     });
   } catch (e) {
@@ -66,6 +70,7 @@ async function updatePlayerAction(formData: FormData) {
     throw e;
   }
 
+  bumpCache('players', 'matches');
   revalidatePath('/admin/players');
   revalidatePath(`/admin/players/${id}`);
   revalidatePath('/matches');
@@ -82,7 +87,10 @@ export default async function AdminPlayerEditPage({
   await requireAdmin();
   const { id } = await params;
   const sp = await searchParams;
-  const player = await getPlayer(id);
+  const [player, users] = await Promise.all([
+    getPlayer(id),
+    cachedListUsers(),
+  ]);
   if (!player) notFound();
 
   return (
@@ -167,6 +175,25 @@ export default async function AdminPlayerEditPage({
             placeholder="https://…"
             className="input"
           />
+        </div>
+        <div className="md:col-span-3">
+          <label className="label">Compte utilisateur lié (optionnel)</label>
+          <select
+            name="linkedUserId"
+            defaultValue={player.linkedUserId ?? ''}
+            className="input"
+          >
+            <option value="">— Aucun —</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.username} ({u.firstName} {u.lastName})
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-fg/50">
+            Permet de reconnaître le joueur sur l'app et d'afficher un badge
+            « C'est vous » sur ses matchs.
+          </p>
         </div>
         {player.photoUrl && (
           <label className="md:col-span-6 inline-flex items-center gap-2 text-sm text-fg/70">

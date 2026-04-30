@@ -89,3 +89,51 @@ textarea {
   animation-fill-mode: forwards;
   will-change: transform, opacity;
 }
+
+/* Tables empilées en mode mobile : chaque ligne devient une carte avec
+   les labels (data-label) en regard de chaque cellule. */
+@media (max-width: 767px) {
+  .table-stack {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .table-stack thead {
+    display: none;
+  }
+  .table-stack tbody,
+  .table-stack tr {
+    display: block;
+    width: 100%;
+  }
+  .table-stack tr {
+    border-bottom: 1px solid #e3e6eb;
+    padding: 0.5rem 0.75rem;
+  }
+  .table-stack tr:last-child {
+    border-bottom: 0;
+  }
+  .table-stack td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.2rem 0;
+    border: 0;
+    text-align: right;
+  }
+  .table-stack td::before {
+    content: attr(data-label);
+    color: rgba(15, 23, 42, 0.55);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+    flex-shrink: 0;
+  }
+  .table-stack td[data-label='']::before,
+  .table-stack td:not([data-label])::before {
+    display: none;
+  }
+}

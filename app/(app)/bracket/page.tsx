@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
-import { listMatches } from '@/lib/matches';
-import { listPlayers } from '@/lib/players';
+import {
+  cachedListMatches as listMatches,
+  cachedListPlayers as listPlayers,
+} from '@/lib/cache';
 import { fmtOdds } from '@/lib/format';
 import {
   MATCH_ROUNDS,

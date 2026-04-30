@@ -165,7 +165,7 @@ export default async function AdminTournamentPage({
           Paris ({bets.length})
         </h2>
         <div className="card overflow-x-auto p-0">
-          <table className="w-full min-w-[600px] text-sm">
+          <table className="table-stack w-full text-sm md:min-w-[600px]">
             <thead>
               <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                 <th className="px-3 py-2">Joueur (user)</th>
@@ -182,20 +182,25 @@ export default async function AdminTournamentPage({
                 const picked = playersById[b.pickedPlayerId];
                 return (
                   <tr key={b.id} className="border-b border-border/50">
-                    <td className="px-3 py-2">{u?.username ?? '—'}</td>
-                    <td className="px-3 py-2">
+                    <td data-label="Joueur" className="px-3 py-2">
+                      {u?.username ?? '—'}
+                    </td>
+                    <td data-label="Pari sur" className="px-3 py-2">
                       {picked ? fmtPlayerName(picked) : '—'}
                     </td>
-                    <td className="px-3 py-2 font-mono">
+                    <td data-label="Cote" className="px-3 py-2 font-mono">
                       {fmtOdds(b.oddsAtBet)}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td data-label="Mise" className="px-3 py-2 text-right">
                       {fmtPoints(b.stake)}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td
+                      data-label="Gain potentiel"
+                      className="px-3 py-2 text-right"
+                    >
                       {fmtPoints(b.potentialWin)}
                     </td>
-                    <td className="px-3 py-2">{b.status}</td>
+                    <td data-label="Statut" className="px-3 py-2">{b.status}</td>
                   </tr>
                 );
               })}

@@ -9,6 +9,13 @@ export const MIN_STAKE = 10;
 export const MAX_STAKE_ABS = 50_000;
 export const LOCK_BEFORE_START_MS = 2 * 60 * 1000;
 
+/**
+ * Bonus payout en multiples de la mise pour un pronostic de score exact.
+ * Le bonus s'applique uniquement si le pari est gagnant (winner correct)
+ * ET si scoreGuessA / scoreGuessB correspondent au score réel du match.
+ */
+export const SCORE_BONUS_MULTIPLIER = 1;
+
 export interface OddsPair {
   oddsA: number;
   oddsB: number;

@@ -143,6 +143,36 @@ export function BetForm({ matchId, playerA, playerB, balance, action }: Props) {
         )}
       </div>
 
+      <div>
+        <div className="label flex items-center justify-between">
+          <span>Pronostic du score (optionnel)</span>
+          <span className="text-[10px] normal-case text-fg/50">
+            Bonus +mise si exact 🎯
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            name="scoreGuessA"
+            type="number"
+            min={0}
+            max={9}
+            placeholder="Sets A"
+            className="input text-center"
+            aria-label={`Score ${playerA.firstName}`}
+          />
+          <span className="text-fg/40">—</span>
+          <input
+            name="scoreGuessB"
+            type="number"
+            min={0}
+            max={9}
+            placeholder="Sets B"
+            className="input text-center"
+            aria-label={`Score ${playerB.firstName}`}
+          />
+        </div>
+      </div>
+
       <div className="rounded-md border border-border bg-fg/5 p-3 text-sm">
         <div className="flex justify-between">
           <span className="text-fg/60">Cote</span>

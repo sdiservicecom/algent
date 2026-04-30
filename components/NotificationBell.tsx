@@ -4,12 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AppNotification } from '@/lib/types';
 
-interface ApiPayload {
-  items: AppNotification[];
-  unread: number;
-}
-
-const POLL_INTERVAL_MS = 15_000;
+const POLL_INTERVAL_MS = 90_000;
 
 const KIND_PILL: Record<AppNotification['kind'], string> = {
   BET_WON: 'bg-success/20 text-success',
@@ -42,26 +37,80 @@ export function NotificationBell() {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
-  const fetchData = async () => {
+  // Poll léger : juste le compteur (1 SCARD côté KV).
+  const fetchCount = async () => {
+    try {
+      const res = await fetch('/api/notifications/count', {
+        cache: 'no-store',
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { unread?: number };
+      setUnread(data.unread ?? 0);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // Fetch complet : seulement quand l'utilisateur ouvre la popover ou que le
+  // compteur change.
+  const fetchItems = async () => {
     try {
       const res = await fetch('/api/notifications', { cache: 'no-store' });
       if (!res.ok) return;
-      const data = (await res.json()) as ApiPayload;
+      const data = (await res.json()) as {
+        items: AppNotification[];
+        unread: number;
+      };
       setItems(data.items ?? []);
       setUnread(data.unread ?? 0);
+      setItemsLoaded(true);
     } catch {
-      /* offline / error : on garde l'état précédent */
+      /* ignore */
     }
   };
 
   useEffect(() => {
-    fetchData();
-    const id = setInterval(fetchData, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
+    fetchCount();
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id) return;
+      id = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        fetchCount();
+      }, POLL_INTERVAL_MS);
+    };
+    const stop = () => {
+      if (id) {
+        clearInterval(id);
+        id = null;
+      }
+    };
+    start();
+    const onVis = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        // Onglet redevient visible : rafraîchit immédiatement, puis reprend le poll.
+        fetchCount();
+        start();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, []);
+
+  // Ouvre la popover : si on n'a pas encore les items ou si le compteur a
+  // changé depuis la dernière ouverture, on rafraîchit.
+  useEffect(() => {
+    if (open && !itemsLoaded) fetchItems();
+  }, [open, itemsLoaded]);
 
   // Fermer la popover au clic extérieur
   useEffect(() => {
@@ -80,7 +129,6 @@ export function NotificationBell() {
 
   const onClickItem = async (n: AppNotification) => {
     if (!n.read) {
-      // Optimiste
       setItems((prev) =>
         prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)),
       );
@@ -109,7 +157,14 @@ export function NotificationBell() {
     <div ref={popoverRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => {
+            const next = !v;
+            // À chaque ouverture, on rafraîchit les items pour rester à jour.
+            if (next) setItemsLoaded(false);
+            return next;
+          });
+        }}
         aria-label="Notifications"
         className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-base hover:border-fg/30"
       >
@@ -135,7 +190,11 @@ export function NotificationBell() {
             )}
           </div>
           <div className="max-h-[60vh] overflow-y-auto">
-            {items.length === 0 ? (
+            {!itemsLoaded ? (
+              <div className="px-4 py-6 text-center text-sm text-fg/50">
+                Chargement…
+              </div>
+            ) : items.length === 0 ? (
               <div className="px-4 py-6 text-center text-sm text-fg/50">
                 Aucune notification.
               </div>

@@ -5,6 +5,7 @@ import { ComboError, placeComboBet } from '@/lib/combos';
 import { WalletError } from '@/lib/wallet';
 import { checkLimit, limits } from '@/lib/ratelimit';
 import { reserveIdempotencyKey } from '@/lib/idempotency';
+import { bumpCache } from '@/lib/cache';
 
 interface BodyItem {
   matchId: string;
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
       stake,
       legs: items,
     });
+    bumpCache('matches', 'leaderboard', 'user-combos', 'user-tx');
     revalidatePath('/dashboard');
     revalidatePath('/history');
     revalidatePath('/matches');

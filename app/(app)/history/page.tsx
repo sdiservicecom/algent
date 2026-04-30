@@ -1,39 +1,26 @@
 import { requireUser } from '@/lib/auth';
-import { listUserBets } from '@/lib/bets';
-import { listUserCombos } from '@/lib/combos';
-import { listUserTransactions } from '@/lib/wallet';
-import { getMatch } from '@/lib/matches';
-import { getPlayer } from '@/lib/players';
+import {
+  cachedListMatches,
+  cachedListPlayers,
+  cachedListUserBets,
+  cachedListUserCombos,
+  cachedListUserTransactions,
+} from '@/lib/cache';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
 import type { BetStatus } from '@/lib/types';
 
 export default async function HistoryPage() {
   const session = await requireUser();
-  const [bets, combos, txs] = await Promise.all([
-    listUserBets(session.sub),
-    listUserCombos(session.sub),
-    listUserTransactions(session.sub, 50),
+  const [bets, combos, txs, allMatches, allPlayers] = await Promise.all([
+    cachedListUserBets(session.sub),
+    cachedListUserCombos(session.sub),
+    cachedListUserTransactions(session.sub, 50),
+    cachedListMatches(),
+    cachedListPlayers(),
   ]);
 
-  const matchIds = Array.from(
-    new Set([
-      ...bets.map((b) => b.matchId),
-      ...combos.flatMap((c) => c.legs.map((l) => l.matchId)),
-    ]),
-  );
-  const matches = Object.fromEntries(
-    (await Promise.all(matchIds.map(getMatch)))
-      .filter((m) => !!m)
-      .map((m) => [m!.id, m!]),
-  );
-  const playerIds = Array.from(
-    new Set(Object.values(matches).flatMap((m) => [m.playerAId, m.playerBId])),
-  );
-  const players = Object.fromEntries(
-    (await Promise.all(playerIds.map(getPlayer)))
-      .filter((p) => !!p)
-      .map((p) => [p!.id, p!]),
-  );
+  const matches = Object.fromEntries(allMatches.map((m) => [m.id, m]));
+  const players = Object.fromEntries(allPlayers.map((p) => [p.id, p]));
 
   return (
     <div className="space-y-8">
@@ -43,7 +30,7 @@ export default async function HistoryPage() {
           <div className="card text-sm text-fg/60">Aucun pari.</div>
         ) : (
           <div className="card overflow-x-auto p-0">
-            <table className="w-full text-sm">
+            <table className="table-stack w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                   <th className="px-3 py-2">Date</th>
@@ -63,22 +50,24 @@ export default async function HistoryPage() {
                   const picked = players[b.pickedPlayerId];
                   return (
                     <tr key={b.id} className="border-b border-border/50">
-                      <td className="px-3 py-2 text-fg/60">
+                      <td data-label="Date" className="px-3 py-2 text-fg/60">
                         {fmtDateTime(b.placedAt)}
                       </td>
-                      <td className="px-3 py-2">
+                      <td data-label="Match" className="px-3 py-2">
                         {pa?.firstName} vs {pb?.firstName}
                       </td>
-                      <td className="px-3 py-2">
+                      <td data-label="Pari sur" className="px-3 py-2">
                         {picked
                           ? `${picked.firstName} ${picked.lastName}`
                           : '—'}
                       </td>
-                      <td className="px-3 py-2 font-mono">
+                      <td data-label="Cote" className="px-3 py-2 font-mono">
                         {fmtOdds(b.oddsAtBet)}
                       </td>
-                      <td className="px-3 py-2">{fmtPoints(b.stake)}</td>
-                      <td className="px-3 py-2">
+                      <td data-label="Mise" className="px-3 py-2">
+                        {fmtPoints(b.stake)}
+                      </td>
+                      <td data-label="Gain" className="px-3 py-2">
                         {b.status === 'WON' ? (
                           <span className="text-success">
                             +{fmtPoints(b.payout ?? 0)}
@@ -91,7 +80,7 @@ export default async function HistoryPage() {
                           <span className="text-fg/50">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2">
+                      <td data-label="Statut" className="px-3 py-2">
                         <StatusPill status={b.status} />
                       </td>
                     </tr>
@@ -201,7 +190,7 @@ export default async function HistoryPage() {
       <section>
         <h2 className="mb-4 text-2xl font-bold">Transactions récentes</h2>
         <div className="card overflow-x-auto p-0">
-          <table className="w-full text-sm">
+          <table className="table-stack w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                 <th className="px-3 py-2">Date</th>
@@ -213,11 +202,12 @@ export default async function HistoryPage() {
             <tbody>
               {txs.map((t) => (
                 <tr key={t.id} className="border-b border-border/50">
-                  <td className="px-3 py-2 text-fg/60">
+                  <td data-label="Date" className="px-3 py-2 text-fg/60">
                     {fmtDateTime(t.createdAt)}
                   </td>
-                  <td className="px-3 py-2">{t.type}</td>
+                  <td data-label="Type" className="px-3 py-2">{t.type}</td>
                   <td
+                    data-label="Montant"
                     className={`px-3 py-2 font-mono ${
                       t.amount > 0
                         ? 'text-success'
@@ -229,7 +219,7 @@ export default async function HistoryPage() {
                     {t.amount > 0 ? '+' : ''}
                     {fmtPoints(t.amount)}
                   </td>
-                  <td className="px-3 py-2 font-mono">
+                  <td data-label="Solde après" className="px-3 py-2 font-mono">
                     {fmtPoints(t.balanceAfter)}
                   </td>
                 </tr>
