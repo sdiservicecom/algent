@@ -90,6 +90,37 @@ textarea {
   will-change: transform, opacity;
 }
 
+/* Bandeau défilant style JT TV pour les prochains matchs.
+   La piste contient le contenu dupliqué deux fois ; l'animation
+   translate jusqu'à -50% pour donner un défilement infini sans saut. */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 0.75rem;
+  animation: ticker var(--ticker-duration, 40s) linear infinite;
+}
+
+.ticker:hover .ticker-track,
+.ticker:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
 /* Tables empilées en mode mobile : chaque ligne devient une carte avec
    les labels (data-label) en regard de chaque cellule. */
 @media (max-width: 767px) {

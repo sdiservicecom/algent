@@ -2,10 +2,15 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { clearSessionCookie, getCurrentUser } from '@/lib/auth';
 import { fmtPoints } from '@/lib/format';
+import {
+  cachedListMatches as listMatches,
+  cachedListPlayers as listPlayers,
+} from '@/lib/cache';
 import { BasketProvider } from '@/components/BasketContext';
 import { FloatingBetBasket } from '@/components/FloatingBetBasket';
 import { NotificationBell } from '@/components/NotificationBell';
 import { HeaderNav, type NavItem } from '@/components/HeaderNav';
+import { UpcomingMatchesBanner } from '@/components/UpcomingMatchesBanner';
 
 async function logout() {
   'use server';
@@ -20,6 +25,9 @@ export default async function AppLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  const [matches, players] = await Promise.all([listMatches(), listPlayers()]);
+  const playersById = Object.fromEntries(players.map((p) => [p.id, p]));
 
   const navItems: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard' },
@@ -72,6 +80,7 @@ export default async function AppLayout({
             </div>
           </nav>
         </header>
+        <UpcomingMatchesBanner matches={matches} players={playersById} />
         <main className="mx-auto max-w-6xl px-3 py-4 sm:px-4 sm:py-6">
           {children}
         </main>

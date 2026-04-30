@@ -1,13 +1,14 @@
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import { fmtDateTime, fmtPlayerName } from '@/lib/format';
-import type { Match, Player } from '@/lib/types';
+import type { Match, MatchStatus, Player } from '@/lib/types';
 
 interface Props {
   matches: Match[];
   players: Record<string, Player>;
 }
 
-const UPCOMING_STATUSES: Match['status'][] = [
+const UPCOMING_STATUSES: MatchStatus[] = [
   'SCHEDULED',
   'OPEN_FOR_BETS',
   'LOCKED',
@@ -37,39 +38,61 @@ export function UpcomingMatchesBanner({ matches, players }: Props) {
       (a, b) =>
         new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     )
-    .slice(0, 8);
+    .slice(0, 12);
 
   if (upcoming.length === 0) return null;
 
+  // On garde uniquement les items pour lesquels les deux joueurs sont
+  // connus (les autres seraient affichés "?" et casseraient la lecture).
+  const items = upcoming
+    .map((m) => {
+      const pa = players[m.playerAId];
+      const pb = players[m.playerBId];
+      if (!pa || !pb) return null;
+      return {
+        id: m.id,
+        status: m.status,
+        label: `${fmtPlayerName(pa)} vs ${fmtPlayerName(pb)}`,
+        time: fmtDateTime(m.startsAt),
+      };
+    })
+    .filter(<T,>(v: T | null): v is T => v != null);
+
+  if (items.length === 0) return null;
+
+  // Vitesse: ~6s visibles par item, plancher à 25s pour rester lisible
+  // même avec un seul match.
+  const duration = Math.max(25, items.length * 6);
+  const styleVar = {
+    ['--ticker-duration' as string]: `${duration}s`,
+  } as CSSProperties;
+
   return (
-    <div className="border-b border-border bg-fg/5">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 overflow-x-auto px-4 py-2 text-xs">
-        <span className="shrink-0 rounded-full bg-accent/20 px-2 py-0.5 font-semibold uppercase tracking-wide text-accent">
-          À venir
-        </span>
-        {upcoming.map((m) => {
-          const pa = players[m.playerAId];
-          const pb = players[m.playerBId];
-          if (!pa || !pb) return null;
-          return (
+    <div className="ticker border-b border-border bg-fg/5">
+      <div className="mx-auto max-w-6xl overflow-hidden px-3 py-2 text-xs sm:px-4">
+        <div
+          className="ticker-track whitespace-nowrap"
+          style={styleVar}
+          role="marquee"
+          aria-label="Prochains matchs"
+        >
+          {/* Contenu dupliqué pour boucler proprement */}
+          {[...items, ...items].map((it, idx) => (
             <Link
-              key={m.id}
-              href={`/matches/${m.id}`}
+              key={`${it.id}-${idx}`}
+              href={`/matches/${it.id}`}
               className="flex shrink-0 items-center gap-2 rounded-md border border-border bg-surface px-2 py-1 transition hover:border-accent"
             >
               <span
-                className={`pill ${STATUS_PILL[m.status] ?? 'bg-fg/10 text-fg/70'}`}
+                className={`pill ${STATUS_PILL[it.status] ?? 'bg-fg/10 text-fg/70'}`}
               >
-                {STATUS_LABEL[m.status] ?? m.status}
+                {STATUS_LABEL[it.status] ?? it.status}
               </span>
-              <span className="font-medium">
-                {fmtPlayerName(pa)} <span className="text-fg/40">vs</span>{' '}
-                {fmtPlayerName(pb)}
-              </span>
-              <span className="text-fg/50">{fmtDateTime(m.startsAt)}</span>
+              <span className="font-medium">{it.label}</span>
+              <span className="text-fg/50">{it.time}</span>
             </Link>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );
