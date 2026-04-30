@@ -1,6 +1,13 @@
 import { K, kv, newId } from './kv';
 import { computeInitialOdds } from './odds';
-import type { Bet, Match, MatchRound, MatchStatus, OddsSnapshot } from './types';
+import {
+  MATCH_ROUNDS,
+  type Bet,
+  type Match,
+  type MatchRound,
+  type MatchStatus,
+  type OddsSnapshot,
+} from './types';
 import { getPlayer } from './players';
 import { createNotification } from './notifications';
 import { applyWalletDelta } from './wallet';
@@ -180,6 +187,72 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
 
   await kv.hset(K.match(matchId), { status: 'SETTLED', winnerId });
   await Promise.allSettled(notifications);
+
+  // Propagation bracket : injecte le vainqueur dans le match du round suivant.
+  await propagateBracketWinner({ ...match, status: 'SETTLED', winnerId });
+}
+
+async function findMatchByBracket(
+  round: MatchRound,
+  slot: number,
+): Promise<Match | null> {
+  const all = await listMatches();
+  return (
+    all.find((m) => m.round === round && m.bracketSlot === slot) ?? null
+  );
+}
+
+async function propagateBracketWinner(prev: Match): Promise<void> {
+  if (!prev.round || prev.bracketSlot == null || !prev.winnerId) return;
+  const idx = MATCH_ROUNDS.indexOf(prev.round);
+  if (idx < 0 || idx >= MATCH_ROUNDS.length - 1) return; // FINAL ou inconnu
+  const nextRound = MATCH_ROUNDS[idx + 1];
+  const nextSlot = Math.ceil(prev.bracketSlot / 2);
+  // Slot impair → côté A du match suivant ; slot pair → côté B
+  const sideA = prev.bracketSlot % 2 === 1;
+
+  const next = await findMatchByBracket(nextRound, nextSlot);
+
+  if (next) {
+    if (next.status !== 'SCHEDULED') return;
+    const betsCount = (await kv.zcard(K.betsByMatch(next.id))) ?? 0;
+    if (betsCount > 0) return;
+
+    const newAId = sideA ? prev.winnerId : next.playerAId;
+    const newBId = sideA ? next.playerBId : prev.winnerId;
+    const [pa, pb] = await Promise.all([
+      getPlayer(newAId),
+      getPlayer(newBId),
+    ]);
+    const updates: Record<string, string | number> = {
+      [sideA ? 'playerAId' : 'playerBId']: prev.winnerId,
+    };
+    if (pa && pb) {
+      const odds = computeInitialOdds(pa.seed, pb.seed);
+      updates.oddsA = odds.oddsA;
+      updates.oddsB = odds.oddsB;
+    }
+    await kv.hset(K.match(next.id), updates);
+    return;
+  }
+
+  // Pas de match suivant existant : on en crée un seulement quand le match
+  // jumeau (sister) est aussi réglé, pour avoir les deux joueurs.
+  const sisterSlot = sideA ? prev.bracketSlot + 1 : prev.bracketSlot - 1;
+  if (sisterSlot < 1) return;
+  const sister = await findMatchByBracket(prev.round, sisterSlot);
+  if (!sister || sister.status !== 'SETTLED' || !sister.winnerId) return;
+
+  const aWinnerId = sideA ? prev.winnerId : sister.winnerId;
+  const bWinnerId = sideA ? sister.winnerId : prev.winnerId;
+  const startsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await createMatch({
+    playerAId: aWinnerId,
+    playerBId: bWinnerId,
+    startsAt,
+    round: nextRound,
+    bracketSlot: nextSlot,
+  });
 }
 
 export async function cancelMatch(matchId: string): Promise<void> {
