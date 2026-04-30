@@ -34,9 +34,35 @@ export function MatchCard({ match, pa, pb, winner }: Props) {
     new Date(match.startsAt).getTime() - Date.now() > 2 * 60 * 1000;
 
   const matchLabel = `${pa.firstName} ${pa.lastName} vs ${pb.firstName} ${pb.lastName}`;
+  const settled = match.status === 'SETTLED' && winner;
 
   const renderOdds = (player: Player, odds: number, label: string) => {
     const picked = isPicked(match.id, player.id);
+
+    if (settled) {
+      const isWinner = winner!.id === player.id;
+      return (
+        <div
+          className={`rounded-md border p-2 ${
+            isWinner
+              ? 'border-success bg-success/20 ring-1 ring-success'
+              : 'border-border bg-bg/30 opacity-60'
+          }`}
+        >
+          <div
+            className={`text-xs ${isWinner ? 'text-success' : 'text-white/50'}`}
+          >
+            {isWinner ? '✓ Vainqueur' : label}
+          </div>
+          <div
+            className={`font-bold ${isWinner ? 'text-success' : 'text-white/60 line-through'}`}
+          >
+            {fmtOdds(odds)}
+          </div>
+        </div>
+      );
+    }
+
     if (!canBet) {
       return (
         <div className="rounded-md border border-border bg-bg/50 p-2">
@@ -128,15 +154,6 @@ export function MatchCard({ match, pa, pb, winner }: Props) {
               style={{ width: `${ratioA * 100}%` }}
             />
           </div>
-        </div>
-      )}
-
-      {match.status === 'SETTLED' && winner && (
-        <div className="mt-3 text-sm">
-          Vainqueur :{' '}
-          <span className="font-semibold text-success">
-            {winner.firstName} {winner.lastName}
-          </span>
         </div>
       )}
 

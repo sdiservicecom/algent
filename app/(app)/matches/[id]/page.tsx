@@ -69,6 +69,9 @@ export default async function MatchDetailPage({
   const tooLate =
     new Date(match.startsAt).getTime() - Date.now() < LOCK_BEFORE_START_MS;
   const canBet = !myBet && match.status === 'OPEN_FOR_BETS' && !tooLate;
+  const settled = match.status === 'SETTLED' && winner;
+  const aIsWinner = settled && winner!.id === pa.id;
+  const bIsWinner = settled && winner!.id === pb.id;
 
   return (
     <div className="space-y-6">
@@ -76,10 +79,18 @@ export default async function MatchDetailPage({
         <div className="text-xs uppercase text-white/50">
           {fmtDateTime(match.startsAt)}
         </div>
-        <div className="mt-2 flex items-start justify-between gap-4">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="mt-2 grid grid-cols-1 items-stretch gap-3 sm:grid-cols-[1fr_auto_1fr]">
+          <div
+            className={`flex min-w-0 items-center gap-3 rounded-lg p-3 transition ${
+              aIsWinner
+                ? 'border border-success bg-success/15 ring-1 ring-success'
+                : settled
+                  ? 'opacity-60'
+                  : ''
+            }`}
+          >
             <PlayerAvatar player={pa} size={56} />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="truncate text-xl font-bold">
                 {pa.firstName} {pa.lastName}
               </div>
@@ -89,14 +100,36 @@ export default async function MatchDetailPage({
                 </div>
               )}
               <div className="text-xs text-white/50">Seed #{pa.seed}</div>
-              <div className="mt-1 text-2xl font-bold text-accent">
+              <div
+                className={`mt-1 text-2xl font-bold ${
+                  aIsWinner
+                    ? 'text-success'
+                    : settled
+                      ? 'text-white/40 line-through'
+                      : 'text-accent'
+                }`}
+              >
                 {fmtOdds(match.oddsA)}
               </div>
+              {aIsWinner && (
+                <div className="text-xs font-semibold uppercase text-success">
+                  ✓ Vainqueur
+                </div>
+              )}
             </div>
           </div>
-          <div className="pt-3 text-white/40">vs</div>
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-3 text-right">
-            <div className="min-w-0">
+          <div className="self-center text-center text-white/40">vs</div>
+          <div
+            className={`flex min-w-0 items-center gap-3 rounded-lg p-3 transition sm:flex-row-reverse sm:text-right ${
+              bIsWinner
+                ? 'border border-success bg-success/15 ring-1 ring-success'
+                : settled
+                  ? 'opacity-60'
+                  : ''
+            }`}
+          >
+            <PlayerAvatar player={pb} size={56} />
+            <div className="min-w-0 flex-1">
               <div className="truncate text-xl font-bold">
                 {pb.firstName} {pb.lastName}
               </div>
@@ -106,11 +139,23 @@ export default async function MatchDetailPage({
                 </div>
               )}
               <div className="text-xs text-white/50">Seed #{pb.seed}</div>
-              <div className="mt-1 text-2xl font-bold text-accent">
+              <div
+                className={`mt-1 text-2xl font-bold ${
+                  bIsWinner
+                    ? 'text-success'
+                    : settled
+                      ? 'text-white/40 line-through'
+                      : 'text-accent'
+                }`}
+              >
                 {fmtOdds(match.oddsB)}
               </div>
+              {bIsWinner && (
+                <div className="text-xs font-semibold uppercase text-success">
+                  ✓ Vainqueur
+                </div>
+              )}
             </div>
-            <PlayerAvatar player={pb} size={56} />
           </div>
         </div>
 
@@ -178,20 +223,11 @@ export default async function MatchDetailPage({
           balance={user.balance}
           action={placeBetAction}
         />
-      ) : (
+      ) : settled ? null : (
         <div className="card text-sm text-white/60">
-          {match.status === 'SETTLED' && winner ? (
-            <>
-              Match réglé. Vainqueur :{' '}
-              <span className="font-semibold text-success">
-                {fmtPlayerName(winner)}
-              </span>
-            </>
-          ) : tooLate ? (
-            'Les paris sont fermés (moins de 2 minutes avant le début).'
-          ) : (
-            'Les paris ne sont pas ouverts pour ce match.'
-          )}
+          {tooLate
+            ? 'Les paris sont fermés (moins de 2 minutes avant le début).'
+            : 'Les paris ne sont pas ouverts pour ce match.'}
         </div>
       )}
 
