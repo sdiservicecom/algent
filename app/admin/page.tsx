@@ -1,28 +1,31 @@
-import { MatchStatus, Role } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { listMatches } from '@/lib/matches';
+import { listPlayers } from '@/lib/players';
+import { listUsers } from '@/lib/users';
 import { fmtPoints } from '@/lib/format';
 
 export default async function AdminHome() {
-  const [users, players, matches, openMatches, settled, totalStaked] =
-    await Promise.all([
-      prisma.user.count({ where: { role: Role.USER } }),
-      prisma.player.count(),
-      prisma.match.count(),
-      prisma.match.count({ where: { status: MatchStatus.OPEN_FOR_BETS } }),
-      prisma.match.count({ where: { status: MatchStatus.SETTLED } }),
-      prisma.bet.aggregate({ _sum: { stake: true } }),
-    ]);
+  const [users, players, matches] = await Promise.all([
+    listUsers(),
+    listPlayers(),
+    listMatches(),
+  ]);
+
+  let totalStaked = 0;
+  for (const m of matches) totalStaked += m.totalStakeA + m.totalStakeB;
 
   const cards = [
-    { label: 'Utilisateurs', value: users },
-    { label: 'Joueurs', value: players },
-    { label: 'Matchs', value: matches },
-    { label: 'Ouverts aux paris', value: openMatches },
-    { label: 'Réglés', value: settled },
+    { label: 'Utilisateurs', value: users.filter((u) => u.role === 'USER').length },
+    { label: 'Joueurs', value: players.length },
+    { label: 'Matchs', value: matches.length },
     {
-      label: 'Total misé (pts)',
-      value: fmtPoints(totalStaked._sum.stake ?? 0),
+      label: 'Ouverts aux paris',
+      value: matches.filter((m) => m.status === 'OPEN_FOR_BETS').length,
     },
+    {
+      label: 'Réglés',
+      value: matches.filter((m) => m.status === 'SETTLED').length,
+    },
+    { label: 'Total misé (pts)', value: fmtPoints(totalStaked) },
   ];
 
   return (

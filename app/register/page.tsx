@@ -1,12 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import bcrypt from 'bcryptjs';
-import { TxType } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { applyWalletDelta } from '@/lib/wallet';
 import { getSession, setSessionCookie, signSession } from '@/lib/auth';
-
-const INITIAL_CREDIT = 1000;
+import { UserError, createUser } from '@/lib/users';
 
 async function register(formData: FormData) {
   'use server';
@@ -24,20 +20,20 @@ async function register(formData: FormData) {
     return redirect('/register?error=validation');
   }
 
-  const existing = await prisma.user.findFirst({
-    where: { username: { equals: username, mode: 'insensitive' } },
-  });
-  if (existing) return redirect('/register?error=taken');
-
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  const user = await prisma.$transaction(async (tx) => {
-    const u = await tx.user.create({
-      data: { firstName, lastName, username, passwordHash, balance: 0 },
+  let user;
+  try {
+    user = await createUser({
+      firstName,
+      lastName,
+      username,
+      passwordHash: await bcrypt.hash(password, 10),
     });
-    await applyWalletDelta(tx, u.id, INITIAL_CREDIT, TxType.INITIAL_CREDIT);
-    return u;
-  });
+  } catch (e) {
+    if (e instanceof UserError && e.code === 'USERNAME_TAKEN') {
+      return redirect('/register?error=taken');
+    }
+    return redirect('/register?error=validation');
+  }
 
   const token = await signSession({
     sub: user.id,

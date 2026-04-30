@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { createMatch } from '@/lib/matches';
+import { createMatch, listMatches } from '@/lib/matches';
+import { listPlayers } from '@/lib/players';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
 
 async function createMatchAction(formData: FormData) {
@@ -33,18 +33,19 @@ export default async function AdminMatchesPage({
   await requireAdmin();
   const sp = await searchParams;
   const [players, matches] = await Promise.all([
-    prisma.player.findMany({ orderBy: { seed: 'asc' } }),
-    prisma.match.findMany({
-      include: { playerA: true, playerB: true, winner: true },
-      orderBy: { startsAt: 'asc' },
-    }),
+    listPlayers(),
+    listMatches(),
   ]);
+  const playerMap = Object.fromEntries(players.map((p) => [p.id, p]));
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Matchs</h1>
 
-      <form action={createMatchAction} className="card grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form
+        action={createMatchAction}
+        className="card grid grid-cols-1 gap-3 md:grid-cols-4"
+      >
         <div>
           <label className="label">Joueur A</label>
           <select name="playerAId" required className="input">
@@ -82,9 +83,7 @@ export default async function AdminMatchesPage({
           </button>
         </div>
         {sp.error && (
-          <p className="md:col-span-4 text-sm text-danger">
-            Champs invalides.
-          </p>
+          <p className="md:col-span-4 text-sm text-danger">Champs invalides.</p>
         )}
         {sp.ok && (
           <p className="md:col-span-4 text-sm text-success">Match créé.</p>
@@ -104,36 +103,40 @@ export default async function AdminMatchesPage({
             </tr>
           </thead>
           <tbody>
-            {matches.map((m) => (
-              <tr key={m.id} className="border-b border-border/50">
-                <td className="px-3 py-2 text-white/60">
-                  {fmtDateTime(m.startsAt)}
-                </td>
-                <td className="px-3 py-2">
-                  {m.playerA.firstName} {m.playerA.lastName} vs{' '}
-                  {m.playerB.firstName} {m.playerB.lastName}
-                </td>
-                <td className="px-3 py-2 font-mono">
-                  {fmtOdds(Number(m.oddsA))} / {fmtOdds(Number(m.oddsB))}
-                </td>
-                <td className="px-3 py-2 text-xs text-white/60">
-                  {fmtPoints(m.totalStakeA)} / {fmtPoints(m.totalStakeB)}
-                </td>
-                <td className="px-3 py-2">
-                  <span className="pill bg-white/10 text-white/70">
-                    {m.status}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <Link
-                    href={`/admin/matches/${m.id}`}
-                    className="btn-secondary"
-                  >
-                    Gérer
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {matches.map((m) => {
+              const pa = playerMap[m.playerAId];
+              const pb = playerMap[m.playerBId];
+              return (
+                <tr key={m.id} className="border-b border-border/50">
+                  <td className="px-3 py-2 text-white/60">
+                    {fmtDateTime(m.startsAt)}
+                  </td>
+                  <td className="px-3 py-2">
+                    {pa?.firstName} {pa?.lastName} vs {pb?.firstName}{' '}
+                    {pb?.lastName}
+                  </td>
+                  <td className="px-3 py-2 font-mono">
+                    {fmtOdds(m.oddsA)} / {fmtOdds(m.oddsB)}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-white/60">
+                    {fmtPoints(m.totalStakeA)} / {fmtPoints(m.totalStakeB)}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className="pill bg-white/10 text-white/70">
+                      {m.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <Link
+                      href={`/admin/matches/${m.id}`}
+                      className="btn-secondary"
+                    >
+                      Gérer
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

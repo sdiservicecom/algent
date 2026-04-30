@@ -1,9 +1,14 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import {
+  PlayerError,
+  createPlayer,
+  deletePlayer,
+  listPlayers,
+} from '@/lib/players';
 
-async function createPlayer(formData: FormData) {
+async function createPlayerAction(formData: FormData) {
   'use server';
   await requireAdmin();
   const firstName = String(formData.get('firstName') ?? '').trim();
@@ -13,26 +18,29 @@ async function createPlayer(formData: FormData) {
     return redirect('/admin/players?error=validation');
   }
   try {
-    await prisma.player.create({ data: { firstName, lastName, seed } });
-  } catch {
-    return redirect('/admin/players?error=seed-taken');
+    await createPlayer({ firstName, lastName, seed });
+  } catch (e) {
+    if (e instanceof PlayerError && e.code === 'SEED_TAKEN') {
+      return redirect('/admin/players?error=seed-taken');
+    }
+    return redirect('/admin/players?error=validation');
   }
   revalidatePath('/admin/players');
   redirect('/admin/players?ok=1');
 }
 
-async function deletePlayer(formData: FormData) {
+async function deletePlayerAction(formData: FormData) {
   'use server';
   await requireAdmin();
   const id = String(formData.get('id'));
-  const used = await prisma.match.count({
-    where: {
-      OR: [{ playerAId: id }, { playerBId: id }],
-      NOT: { status: 'CANCELLED' },
-    },
-  });
-  if (used > 0) return redirect('/admin/players?error=in-use');
-  await prisma.player.delete({ where: { id } });
+  try {
+    await deletePlayer(id);
+  } catch (e) {
+    if (e instanceof PlayerError && e.code === 'IN_USE') {
+      return redirect('/admin/players?error=in-use');
+    }
+    throw e;
+  }
   revalidatePath('/admin/players');
   redirect('/admin/players');
 }
@@ -44,15 +52,16 @@ export default async function AdminPlayersPage({
 }) {
   await requireAdmin();
   const sp = await searchParams;
-  const players = await prisma.player.findMany({
-    orderBy: { seed: 'asc' },
-  });
+  const players = await listPlayers();
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Joueurs</h1>
 
-      <form action={createPlayer} className="card grid grid-cols-1 gap-3 md:grid-cols-4">
+      <form
+        action={createPlayerAction}
+        className="card grid grid-cols-1 gap-3 md:grid-cols-4"
+      >
         <div>
           <label className="label">Prénom</label>
           <input name="firstName" required className="input" />
@@ -107,7 +116,7 @@ export default async function AdminPlayersPage({
                   {p.firstName} {p.lastName}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <form action={deletePlayer} className="inline">
+                  <form action={deletePlayerAction} className="inline">
                     <input type="hidden" name="id" value={p.id} />
                     <button className="btn-danger" type="submit">
                       Supprimer

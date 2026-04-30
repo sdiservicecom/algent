@@ -1,45 +1,65 @@
-import { Prisma, TxType } from '@prisma/client';
+import { K, kv, newId } from './kv';
+import type { PointTransaction, TxType } from './types';
 
 export class WalletError extends Error {
-  constructor(public code: 'INSUFFICIENT_BALANCE' | 'USER_NOT_FOUND') {
+  constructor(public code: 'INSUFFICIENT_BALANCE') {
     super(code);
   }
 }
 
 /**
- * Verrouille la ligne user, applique le delta, et journalise la transaction.
- * Doit être appelé à l'intérieur d'une transaction Prisma.
+ * Applique un delta de solde et journalise une transaction.
+ *
+ * On utilise HINCRBY (atomique). Si le delta est négatif et que le résultat
+ * descendrait sous 0, on annule (HINCRBY +amount) et on lève WalletError.
+ *
+ * Note: une autre requête peut très brièvement voir un solde négatif entre
+ * le HINCRBY et le rollback. Pour un tournoi interne c'est acceptable.
  */
 export async function applyWalletDelta(
-  tx: Prisma.TransactionClient,
   userId: string,
   amount: number,
   type: TxType,
-  meta?: { betId?: string; matchId?: string; metadata?: Prisma.InputJsonValue },
-) {
-  const rows = await tx.$queryRaw<Array<{ id: string; balance: number }>>`
-    SELECT id, balance FROM "User" WHERE id = ${userId} FOR UPDATE
-  `;
-  const user = rows[0];
-  if (!user) throw new WalletError('USER_NOT_FOUND');
+  meta?: { betId?: string; matchId?: string; metadata?: Record<string, unknown> },
+): Promise<PointTransaction> {
+  const newBalance = (await kv.hincrby(K.user(userId), 'balance', amount)) as number;
 
-  const newBalance = user.balance + amount;
-  if (newBalance < 0) throw new WalletError('INSUFFICIENT_BALANCE');
+  if (newBalance < 0) {
+    await kv.hincrby(K.user(userId), 'balance', -amount); // rollback
+    throw new WalletError('INSUFFICIENT_BALANCE');
+  }
 
-  await tx.user.update({
-    where: { id: userId },
-    data: { balance: newBalance },
+  const tx: PointTransaction = {
+    id: newId(),
+    userId,
+    type,
+    amount,
+    balanceAfter: newBalance,
+    betId: meta?.betId ?? null,
+    matchId: meta?.matchId ?? null,
+    metadata: meta?.metadata ?? null,
+    createdAt: new Date().toISOString(),
+  };
+
+  await kv.set(K.tx(tx.id), tx);
+  await kv.zadd(K.txsByUser(userId), {
+    score: Date.parse(tx.createdAt),
+    member: tx.id,
   });
 
-  return tx.pointTransaction.create({
-    data: {
-      userId,
-      type,
-      amount,
-      balanceAfter: newBalance,
-      betId: meta?.betId,
-      matchId: meta?.matchId,
-      metadata: meta?.metadata,
-    },
-  });
+  return tx;
+}
+
+export async function listUserTransactions(
+  userId: string,
+  limit = 50,
+): Promise<PointTransaction[]> {
+  const ids = (await kv.zrange(K.txsByUser(userId), 0, limit - 1, {
+    rev: true,
+  })) as string[];
+  if (ids.length === 0) return [];
+  const txs = await Promise.all(
+    ids.map((id) => kv.get<PointTransaction>(K.tx(id))),
+  );
+  return txs.filter((t): t is PointTransaction => !!t);
 }

@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/prisma';
-import { setSessionCookie, signSession, getSession } from '@/lib/auth';
+import { getSession, setSessionCookie, signSession } from '@/lib/auth';
+import { getUserByUsername } from '@/lib/users';
 
 async function login(formData: FormData) {
   'use server';
@@ -11,9 +11,7 @@ async function login(formData: FormData) {
   if (!username || !password) {
     return redirect('/login?error=missing');
   }
-  const user = await prisma.user.findFirst({
-    where: { username: { equals: username, mode: 'insensitive' } },
-  });
+  const user = await getUserByUsername(username);
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return redirect('/login?error=invalid');
   }

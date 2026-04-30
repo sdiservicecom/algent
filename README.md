@@ -1,14 +1,25 @@
 # Algent — Tournoi virtuel
 
 Application interne de paris à monnaie virtuelle pour un tournoi d'entreprise.
-Aucun argent réel n'est impliqué.
+Aucun argent réel.
 
 ## Stack
 
 - **Next.js 15** (App Router) + React 19 + TypeScript + Tailwind
-- **Prisma** + **PostgreSQL**
+- **Vercel KV** (Upstash Redis) pour tout le stockage — pas de schéma, pas de migrations
 - **bcryptjs** + **jose** (JWT en cookie httpOnly)
 - Déploiement **Vercel** (cron job inclus)
+
+## Déploiement Vercel
+
+1. Sur Vercel, **Storage → Create → KV** (déjà fait), lié au projet : les variables `KV_*` sont auto-injectées.
+2. Settings → Environment Variables, ajouter :
+   - `AUTH_SECRET` (>= 32 caractères : `openssl rand -base64 32`)
+   - `CRON_SECRET` (n'importe quel secret long, Vercel l'envoie auto aux endpoints `/api/cron/*`)
+3. Redeploy.
+4. **Le premier utilisateur qui s'inscrit devient ADMIN automatiquement** — va sur `/register`, crée ton compte d'admin, puis tu pourras créer joueurs / matchs depuis `/admin`.
+
+Le cron quotidien (`vercel.json`) frappe `/api/cron/daily-bonus` à 06:00 UTC.
 
 ## Mise en route locale
 
@@ -16,40 +27,15 @@ Aucun argent réel n'est impliqué.
 # 1. Dépendances
 npm install
 
-# 2. Variables d'env
-cp .env.example .env
-# Éditer DATABASE_URL et AUTH_SECRET
+# 2. Lier le projet Vercel et récupérer les variables KV
+npx vercel link
+npx vercel env pull .env.local
 
-# 3. Schéma
-npx prisma migrate dev --name init
+# 3. Ajouter AUTH_SECRET et CRON_SECRET à .env.local si absents
 
-# 4. Index partiels (1 pari PENDING / match, username case-insensitive)
-psql "$DATABASE_URL" -c "
-CREATE UNIQUE INDEX IF NOT EXISTS one_pending_bet_per_match
-  ON \"Bet\" (\"userId\", \"matchId\") WHERE status = 'PENDING';
-CREATE UNIQUE INDEX IF NOT EXISTS user_username_lower_unique
-  ON \"User\" (LOWER(\"username\"));
-"
-
-# 5. Admin par défaut
-npm run db:seed   # admin / admin1234 (configurable via ADMIN_USERNAME / ADMIN_PASSWORD)
-
-# 6. Dev
+# 4. Dev
 npm run dev
 ```
-
-## Déploiement Vercel
-
-1. **Créer une base PostgreSQL** (Vercel Postgres, Neon ou Supabase). Récupérer l'URL.
-2. Sur Vercel → Settings → Environment Variables :
-   - `DATABASE_URL` (avec `?pgbouncer=true&connection_limit=1` si pooler)
-   - `AUTH_SECRET` (>= 32 octets : `openssl rand -base64 32`)
-   - `CRON_SECRET` (Vercel le passe automatiquement aux endpoints `/api/cron/*` via `Authorization: Bearer <CRON_SECRET>`)
-3. Déployer. Le `build` lance `prisma generate && prisma migrate deploy && next build`.
-4. Après le 1er déploiement, exécuter manuellement les `CREATE UNIQUE INDEX` partiels (voir ci-dessus) sur la base.
-5. Lancer le seed admin une fois (`npm run db:seed` localement contre la DB de prod, ou via une migration dédiée).
-
-Le cron quotidien (`vercel.json`) frappe `/api/cron/daily-bonus` à 06:00 UTC.
 
 ## Arborescence
 
@@ -57,44 +43,67 @@ Le cron quotidien (`vercel.json`) frappe `/api/cron/daily-bonus` à 06:00 UTC.
 .
 ├── app/
 │   ├── (app)/                # Routes authentifiées : dashboard, matches, history, leaderboard
-│   ├── admin/                # Routes admin (RolesGuard via requireAdmin)
+│   ├── admin/                # Routes admin (requireAdmin)
 │   ├── login/  register/     # Auth
 │   └── api/
 │       ├── auth/me           # Session courante
 │       ├── wallet/balance    # Solde
-│       ├── leaderboard       # Classement
 │       └── cron/daily-bonus  # Cron Vercel
 ├── components/               # BetForm, AutoRefresh
 ├── lib/
-│   ├── prisma.ts             # Singleton Prisma
+│   ├── kv.ts                 # Client Vercel KV + conventions de clés
+│   ├── types.ts              # Types métier (User, Match, Bet, …)
 │   ├── auth.ts               # JWT + cookie + helpers session
 │   ├── odds.ts               # Cotes initiales (sigmoïde) + dynamiques (lissage + market)
-│   ├── wallet.ts             # Verrou + delta + log transaction
-│   ├── bets.ts               # Placement de pari (TX SERIALIZABLE)
-│   ├── matches.ts            # Création / transitions / settle / cancel
+│   ├── wallet.ts             # Delta de solde + log de transaction
+│   ├── users.ts              # CRUD users
+│   ├── players.ts            # CRUD players
+│   ├── matches.ts            # CRUD matches + transitions + settle / cancel
+│   ├── bets.ts               # placeBet (avec garde anti double-pari atomique)
 │   ├── daily-bonus.ts        # Logique du bonus quotidien
 │   ├── leaderboard.ts        # Agrégation classement
-│   └── format.ts             # Formatage points/cotes/dates
+│   └── format.ts             # Formatage points / cotes / dates
 ├── middleware.ts             # Garde JWT + redirections
-├── prisma/
-│   ├── schema.prisma
-│   └── seed.ts
 ├── docs/SPECIFICATION.md     # Spec produit complète
 ├── vercel.json               # Cron daily-bonus
 └── package.json
 ```
 
-## Choix techniques clés
+## Modèle de stockage (Vercel KV)
+
+| Clé | Type Redis | Contenu |
+|---|---|---|
+| `algent:user:{id}` | HASH | User (champ `balance` mis à jour atomiquement par `HINCRBY`) |
+| `algent:username:{lower}` | string | userId (réservation atomique via `SET NX`) |
+| `algent:users:all` | SET | tous les userIds |
+| `algent:player:{id}` | JSON | Player |
+| `algent:player:bySeed:{n}` | string | playerId (anti-doublon de seed) |
+| `algent:players:byseed` | ZSET | playerId trié par seed |
+| `algent:match:{id}` | HASH | Match (totaux + cotes mis à jour par champ) |
+| `algent:matches:bytime` | ZSET | matchId trié par `startsAt` |
+| `algent:bet:{id}` | JSON | Bet |
+| `algent:bets:byuser:{userId}` | ZSET | betId trié par `placedAt` |
+| `algent:bets:bymatch:{matchId}` | ZSET | betId trié par `placedAt` |
+| `algent:bets:pending:bymatch:{matchId}` | SET | betIds PENDING (pour settlement) |
+| `algent:bets:pending:{userId}:{matchId}` | string | betId — `SET NX` garantit 1 pari actif par match |
+| `algent:tx:{id}` | JSON | PointTransaction |
+| `algent:txs:byuser:{userId}` | ZSET | txId trié par `createdAt` |
+| `algent:bonus:{userId}:{YYYY-MM-DD}` | string | montant (idempotence du bonus quotidien) |
+| `algent:odds:bymatch:{matchId}` | LIST | snapshots de cotes |
+
+## Choix techniques
 
 | Sujet | Décision |
 |---|---|
-| Monnaie | `Int` (jamais de float) |
-| Cotes | `Decimal(6,3)`, sigmoïde initiale, lissage exponentiel |
-| Concurrence | Prisma `Serializable` + `SELECT ... FOR UPDATE` |
+| Stockage | Vercel KV (Upstash Redis), pas de SGBD |
+| Monnaie | entiers, jamais de float — `HINCRBY` atomique |
+| Cotes | sigmoïde initiale, lissage exponentiel + mix marché borné à 60% |
 | Auth | JWT signé HS256 dans cookie httpOnly |
-| Realtime | `router.refresh()` + `setInterval(10s)` côté client (pas de WebSocket/SSE) |
+| Realtime | `router.refresh()` toutes les 10 s côté client |
 | Cron | Vercel Cron (1×/jour) |
-| Anti double-pari | Index partiel unique sur `(userId, matchId) WHERE status='PENDING'` |
+| Anti double-pari | `SET NX` sur `algent:bets:pending:{userId}:{matchId}` |
+| Anti solde négatif | `HINCRBY` puis rollback si résultat < 0 |
 | Lock paris | 2 minutes avant `startsAt`, vérifié à la pose |
+| Premier admin | Le 1er utilisateur inscrit → rôle ADMIN |
 
 Voir [docs/SPECIFICATION.md](docs/SPECIFICATION.md) pour la spec complète et l'algorithme des cotes détaillé avec exemples chiffrés.

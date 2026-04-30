@@ -1,4 +1,5 @@
-import { prisma } from './prisma';
+import { listUserBets } from './bets';
+import { listUsers } from './users';
 
 export interface LeaderboardEntry {
   rank: number;
@@ -13,46 +14,44 @@ export interface LeaderboardEntry {
 }
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  const rows = await prisma.$queryRaw<
-    Array<{
-      userId: string;
-      username: string;
-      balance: number;
-      totalStaked: bigint | null;
-      totalWon: bigint | null;
-      betsWon: bigint | null;
-      betsLost: bigint | null;
-    }>
-  >`
-    SELECT
-      u.id            AS "userId",
-      u.username      AS "username",
-      u.balance       AS "balance",
-      COALESCE(SUM(b.stake) FILTER (WHERE b.status IN ('WON','LOST')), 0)     AS "totalStaked",
-      COALESCE(SUM(b.payout) FILTER (WHERE b.status = 'WON'), 0)              AS "totalWon",
-      COUNT(*) FILTER (WHERE b.status = 'WON')                                AS "betsWon",
-      COUNT(*) FILTER (WHERE b.status = 'LOST')                               AS "betsLost"
-    FROM "User" u
-    LEFT JOIN "Bet" b ON b."userId" = u.id
-    WHERE u.role = 'USER'
-    GROUP BY u.id
-    ORDER BY u.balance DESC, "totalWon" DESC
-  `;
+  const users = (await listUsers()).filter((u) => u.role === 'USER');
 
-  return rows.map((r, i) => {
-    const won = Number(r.betsWon ?? 0);
-    const lost = Number(r.betsLost ?? 0);
-    const total = won + lost;
-    return {
-      rank: i + 1,
-      userId: r.userId,
-      username: r.username,
-      balance: r.balance,
-      totalStaked: Number(r.totalStaked ?? 0),
-      totalWon: Number(r.totalWon ?? 0),
-      betsWon: won,
-      betsLost: lost,
-      successRate: total > 0 ? won / total : 0,
-    };
+  const stats = await Promise.all(
+    users.map(async (u) => {
+      const bets = await listUserBets(u.id);
+      let totalStaked = 0;
+      let totalWon = 0;
+      let betsWon = 0;
+      let betsLost = 0;
+      for (const b of bets) {
+        if (b.status === 'WON' || b.status === 'LOST') {
+          totalStaked += b.stake;
+        }
+        if (b.status === 'WON') {
+          totalWon += b.payout ?? 0;
+          betsWon++;
+        } else if (b.status === 'LOST') {
+          betsLost++;
+        }
+      }
+      const total = betsWon + betsLost;
+      return {
+        userId: u.id,
+        username: u.username,
+        balance: u.balance,
+        totalStaked,
+        totalWon,
+        betsWon,
+        betsLost,
+        successRate: total > 0 ? betsWon / total : 0,
+      };
+    }),
+  );
+
+  stats.sort((a, b) => {
+    if (b.balance !== a.balance) return b.balance - a.balance;
+    return b.totalWon - a.totalWon;
   });
+
+  return stats.map((s, i) => ({ rank: i + 1, ...s }));
 }

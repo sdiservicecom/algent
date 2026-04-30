@@ -1,10 +1,11 @@
 import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { BetStatus, MatchStatus } from '@prisma/client';
 import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { BetError, placeBet } from '@/lib/bets';
+import { getUser } from '@/lib/users';
+import { BetError, findActivePendingBet, placeBet } from '@/lib/bets';
 import { WalletError } from '@/lib/wallet';
+import { getMatch, listOddsSnapshots } from '@/lib/matches';
+import { getPlayer } from '@/lib/players';
 import { LOCK_BEFORE_START_MS } from '@/lib/odds';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
 import { BetForm } from '@/components/BetForm';
@@ -47,34 +48,26 @@ export default async function MatchDetailPage({
   const { id } = await params;
   const sp = await searchParams;
 
-  const [match, user, myBet, snapshots] = await Promise.all([
-    prisma.match.findUnique({
-      where: { id },
-      include: { playerA: true, playerB: true, winner: true },
-    }),
-    prisma.user.findUnique({ where: { id: session.sub } }),
-    prisma.bet.findFirst({
-      where: {
-        userId: session.sub,
-        matchId: id,
-        status: BetStatus.PENDING,
-      },
-    }),
-    prisma.oddsSnapshot.findMany({
-      where: { matchId: id },
-      orderBy: { createdAt: 'asc' },
-    }),
+  const match = await getMatch(id);
+  if (!match) notFound();
+
+  const [user, myBet, snapshots, pa, pb, winner] = await Promise.all([
+    getUser(session.sub),
+    findActivePendingBet(session.sub, id),
+    listOddsSnapshots(id),
+    getPlayer(match.playerAId),
+    getPlayer(match.playerBId),
+    match.winnerId ? getPlayer(match.winnerId) : Promise.resolve(null),
   ]);
 
-  if (!match || !user) notFound();
+  if (!user || !pa || !pb) notFound();
 
   const total = match.totalStakeA + match.totalStakeB;
   const ratioA = total > 0 ? match.totalStakeA / total : 0.5;
 
   const tooLate =
     new Date(match.startsAt).getTime() - Date.now() < LOCK_BEFORE_START_MS;
-  const canBet =
-    !myBet && match.status === MatchStatus.OPEN_FOR_BETS && !tooLate;
+  const canBet = !myBet && match.status === 'OPEN_FOR_BETS' && !tooLate;
 
   return (
     <div className="space-y-6">
@@ -85,25 +78,21 @@ export default async function MatchDetailPage({
         <div className="mt-2 flex items-center justify-between">
           <div className="flex-1">
             <div className="text-xl font-bold">
-              {match.playerA.firstName} {match.playerA.lastName}
+              {pa.firstName} {pa.lastName}
             </div>
-            <div className="text-xs text-white/50">
-              Seed #{match.playerA.seed}
-            </div>
+            <div className="text-xs text-white/50">Seed #{pa.seed}</div>
             <div className="mt-2 text-2xl font-bold text-accent">
-              {fmtOdds(Number(match.oddsA))}
+              {fmtOdds(match.oddsA)}
             </div>
           </div>
           <div className="px-4 text-white/40">vs</div>
           <div className="flex-1 text-right">
             <div className="text-xl font-bold">
-              {match.playerB.firstName} {match.playerB.lastName}
+              {pb.firstName} {pb.lastName}
             </div>
-            <div className="text-xs text-white/50">
-              Seed #{match.playerB.seed}
-            </div>
+            <div className="text-xs text-white/50">Seed #{pb.seed}</div>
             <div className="mt-2 text-2xl font-bold text-accent">
-              {fmtOdds(Number(match.oddsB))}
+              {fmtOdds(match.oddsB)}
             </div>
           </div>
         </div>
@@ -139,11 +128,8 @@ export default async function MatchDetailPage({
         <div className="card">
           <h2 className="mb-2 text-lg font-semibold">Votre pari</h2>
           <p className="text-sm">
-            {(myBet.pickedPlayerId === match.playerAId
-              ? match.playerA
-              : match.playerB
-            ).firstName}{' '}
-            @ {fmtOdds(Number(myBet.oddsAtBet))} — mise{' '}
+            {(myBet.pickedPlayerId === match.playerAId ? pa : pb).firstName} @{' '}
+            {fmtOdds(myBet.oddsAtBet)} — mise{' '}
             <span className="font-medium">{fmtPoints(myBet.stake)} pts</span> →
             gain potentiel{' '}
             <span className="font-medium text-success">
@@ -155,25 +141,25 @@ export default async function MatchDetailPage({
         <BetForm
           matchId={match.id}
           playerA={{
-            id: match.playerA.id,
-            label: `${match.playerA.firstName} ${match.playerA.lastName}`,
-            odds: Number(match.oddsA),
+            id: pa.id,
+            label: `${pa.firstName} ${pa.lastName}`,
+            odds: match.oddsA,
           }}
           playerB={{
-            id: match.playerB.id,
-            label: `${match.playerB.firstName} ${match.playerB.lastName}`,
-            odds: Number(match.oddsB),
+            id: pb.id,
+            label: `${pb.firstName} ${pb.lastName}`,
+            odds: match.oddsB,
           }}
           balance={user.balance}
           action={placeBetAction}
         />
       ) : (
         <div className="card text-sm text-white/60">
-          {match.status === MatchStatus.SETTLED && match.winner ? (
+          {match.status === 'SETTLED' && winner ? (
             <>
               Match réglé. Vainqueur :{' '}
               <span className="font-semibold text-success">
-                {match.winner.firstName} {match.winner.lastName}
+                {winner.firstName} {winner.lastName}
               </span>
             </>
           ) : tooLate ? (
@@ -200,17 +186,13 @@ export default async function MatchDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {snapshots.map((s) => (
-                  <tr key={s.id} className="border-b border-border/50">
+                {snapshots.map((s, i) => (
+                  <tr key={i} className="border-b border-border/50">
                     <td className="px-3 py-2 text-white/60">
                       {fmtDateTime(s.createdAt)}
                     </td>
-                    <td className="px-3 py-2 font-mono">
-                      {fmtOdds(Number(s.oddsA))}
-                    </td>
-                    <td className="px-3 py-2 font-mono">
-                      {fmtOdds(Number(s.oddsB))}
-                    </td>
+                    <td className="px-3 py-2 font-mono">{fmtOdds(s.oddsA)}</td>
+                    <td className="px-3 py-2 font-mono">{fmtOdds(s.oddsB)}</td>
                     <td className="px-3 py-2">{fmtPoints(s.totalStakeA)}</td>
                     <td className="px-3 py-2">{fmtPoints(s.totalStakeB)}</td>
                     <td className="px-3 py-2 text-xs text-white/50">

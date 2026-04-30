@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { MatchStatus } from '@prisma/client';
 import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { listMatches } from '@/lib/matches';
+import { listPlayers } from '@/lib/players';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
+import type { MatchStatus } from '@/lib/types';
 
 const STATUS_LABEL: Record<MatchStatus, { label: string; color: string }> = {
   SCHEDULED: { label: 'À venir', color: 'bg-white/10 text-white/70' },
@@ -16,10 +17,11 @@ const STATUS_LABEL: Record<MatchStatus, { label: string; color: string }> = {
 
 export default async function MatchesPage() {
   await requireUser();
-  const matches = await prisma.match.findMany({
-    include: { playerA: true, playerB: true, winner: true },
-    orderBy: { startsAt: 'asc' },
-  });
+  const [matches, players] = await Promise.all([
+    listMatches(),
+    listPlayers(),
+  ]);
+  const playerMap = Object.fromEntries(players.map((p) => [p.id, p]));
 
   return (
     <div>
@@ -34,6 +36,10 @@ export default async function MatchesPage() {
             const total = m.totalStakeA + m.totalStakeB;
             const ratioA = total > 0 ? m.totalStakeA / total : 0.5;
             const status = STATUS_LABEL[m.status];
+            const pa = playerMap[m.playerAId];
+            const pb = playerMap[m.playerBId];
+            const winner = m.winnerId ? playerMap[m.winnerId] : null;
+            if (!pa || !pb) return null;
             return (
               <li key={m.id} className="card">
                 <div className="flex items-center justify-between">
@@ -45,20 +51,16 @@ export default async function MatchesPage() {
                 <div className="mt-3 flex items-center justify-between">
                   <div className="flex-1">
                     <div className="font-semibold">
-                      {m.playerA.firstName} {m.playerA.lastName}
+                      {pa.firstName} {pa.lastName}
                     </div>
-                    <div className="text-xs text-white/50">
-                      Seed #{m.playerA.seed}
-                    </div>
+                    <div className="text-xs text-white/50">Seed #{pa.seed}</div>
                   </div>
                   <div className="px-3 text-xs text-white/50">vs</div>
                   <div className="flex-1 text-right">
                     <div className="font-semibold">
-                      {m.playerB.firstName} {m.playerB.lastName}
+                      {pb.firstName} {pb.lastName}
                     </div>
-                    <div className="text-xs text-white/50">
-                      Seed #{m.playerB.seed}
-                    </div>
+                    <div className="text-xs text-white/50">Seed #{pb.seed}</div>
                   </div>
                 </div>
 
@@ -66,13 +68,13 @@ export default async function MatchesPage() {
                   <div className="rounded-md border border-border bg-bg/50 p-2">
                     <div className="text-xs text-white/50">Cote A</div>
                     <div className="font-bold text-accent">
-                      {fmtOdds(Number(m.oddsA))}
+                      {fmtOdds(m.oddsA)}
                     </div>
                   </div>
                   <div className="rounded-md border border-border bg-bg/50 p-2">
                     <div className="text-xs text-white/50">Cote B</div>
                     <div className="font-bold text-accent">
-                      {fmtOdds(Number(m.oddsB))}
+                      {fmtOdds(m.oddsB)}
                     </div>
                   </div>
                 </div>
@@ -92,11 +94,11 @@ export default async function MatchesPage() {
                   </div>
                 )}
 
-                {m.status === MatchStatus.SETTLED && m.winner && (
+                {m.status === 'SETTLED' && winner && (
                   <div className="mt-3 text-sm">
                     Vainqueur :{' '}
                     <span className="font-semibold text-success">
-                      {m.winner.firstName} {m.winner.lastName}
+                      {winner.firstName} {winner.lastName}
                     </span>
                   </div>
                 )}
@@ -105,14 +107,12 @@ export default async function MatchesPage() {
                   <Link
                     href={`/matches/${m.id}`}
                     className={
-                      m.status === MatchStatus.OPEN_FOR_BETS
+                      m.status === 'OPEN_FOR_BETS'
                         ? 'btn-primary'
                         : 'btn-secondary'
                     }
                   >
-                    {m.status === MatchStatus.OPEN_FOR_BETS
-                      ? 'Parier'
-                      : 'Détails'}
+                    {m.status === 'OPEN_FOR_BETS' ? 'Parier' : 'Détails'}
                   </Link>
                 </div>
               </li>

@@ -1,5 +1,3 @@
-import { Prisma } from '@prisma/client';
-
 export const SENSITIVITY = 0.15;
 export const MARKET_WEIGHT_MAX = 0.6;
 export const MARKET_VOLUME_REF = 5000;
@@ -12,23 +10,22 @@ export const MAX_STAKE_ABS = 50_000;
 export const LOCK_BEFORE_START_MS = 2 * 60 * 1000;
 
 export interface OddsPair {
-  oddsA: Prisma.Decimal;
-  oddsB: Prisma.Decimal;
+  oddsA: number;
+  oddsB: number;
 }
 
-function clamp(x: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, x));
-}
+const clamp = (x: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, x));
 
-function toOdds(pA: number): OddsPair {
+const round3 = (x: number) => Math.round(x * 1000) / 1000;
+
+const toOdds = (pA: number): OddsPair => {
   const pB = 1 - pA;
-  const oddsA = clamp(1 / pA, ODDS_MIN, ODDS_MAX);
-  const oddsB = clamp(1 / pB, ODDS_MIN, ODDS_MAX);
   return {
-    oddsA: new Prisma.Decimal(oddsA.toFixed(3)),
-    oddsB: new Prisma.Decimal(oddsB.toFixed(3)),
+    oddsA: round3(clamp(1 / pA, ODDS_MIN, ODDS_MAX)),
+    oddsB: round3(clamp(1 / pB, ODDS_MIN, ODDS_MAX)),
   };
-}
+};
 
 export function computeInitialOdds(seedA: number, seedB: number): OddsPair {
   const diff = seedB - seedA;

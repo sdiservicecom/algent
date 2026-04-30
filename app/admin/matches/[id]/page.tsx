@@ -1,16 +1,22 @@
 import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { MatchStatus } from '@prisma/client';
 import { requireAdmin } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { cancelMatch, settleMatch, transitionMatchStatus } from '@/lib/matches';
+import {
+  cancelMatch,
+  getMatch,
+  settleMatch,
+  transitionMatchStatus,
+} from '@/lib/matches';
+import { listMatchBets } from '@/lib/bets';
+import { getPlayer } from '@/lib/players';
+import { getUser } from '@/lib/users';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
 
 async function open(formData: FormData) {
   'use server';
   await requireAdmin();
   const id = String(formData.get('id'));
-  await transitionMatchStatus(id, MatchStatus.OPEN_FOR_BETS);
+  await transitionMatchStatus(id, 'OPEN_FOR_BETS');
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
 }
@@ -19,7 +25,7 @@ async function lock(formData: FormData) {
   'use server';
   await requireAdmin();
   const id = String(formData.get('id'));
-  await transitionMatchStatus(id, MatchStatus.LOCKED);
+  await transitionMatchStatus(id, 'LOCKED');
   revalidatePath(`/admin/matches/${id}`);
 }
 
@@ -28,19 +34,19 @@ async function settle(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get('id'));
   const winnerId = String(formData.get('winnerId'));
-  const match = await prisma.match.findUnique({ where: { id } });
+  const match = await getMatch(id);
   if (!match) return;
-  if (match.status !== MatchStatus.FINISHED) {
-    if (match.status === MatchStatus.LOCKED) {
-      await transitionMatchStatus(id, MatchStatus.IN_PROGRESS);
-      await transitionMatchStatus(id, MatchStatus.FINISHED);
-    } else if (match.status === MatchStatus.IN_PROGRESS) {
-      await transitionMatchStatus(id, MatchStatus.FINISHED);
-    } else if (match.status === MatchStatus.OPEN_FOR_BETS) {
-      await transitionMatchStatus(id, MatchStatus.LOCKED);
-      await transitionMatchStatus(id, MatchStatus.IN_PROGRESS);
-      await transitionMatchStatus(id, MatchStatus.FINISHED);
-    }
+
+  // S'assurer qu'on est dans l'état FINISHED avant de régler
+  if (match.status === 'OPEN_FOR_BETS') {
+    await transitionMatchStatus(id, 'LOCKED');
+    await transitionMatchStatus(id, 'IN_PROGRESS');
+    await transitionMatchStatus(id, 'FINISHED');
+  } else if (match.status === 'LOCKED') {
+    await transitionMatchStatus(id, 'IN_PROGRESS');
+    await transitionMatchStatus(id, 'FINISHED');
+  } else if (match.status === 'IN_PROGRESS') {
+    await transitionMatchStatus(id, 'FINISHED');
   }
   await settleMatch(id, winnerId);
   revalidatePath(`/admin/matches/${id}`);
@@ -64,18 +70,23 @@ export default async function AdminMatchDetailPage({
 }) {
   await requireAdmin();
   const { id } = await params;
-  const [match, bets] = await Promise.all([
-    prisma.match.findUnique({
-      where: { id },
-      include: { playerA: true, playerB: true, winner: true },
-    }),
-    prisma.bet.findMany({
-      where: { matchId: id },
-      include: { user: true },
-      orderBy: { placedAt: 'asc' },
-    }),
-  ]);
+  const match = await getMatch(id);
   if (!match) notFound();
+
+  const [bets, pa, pb, winner] = await Promise.all([
+    listMatchBets(id),
+    getPlayer(match.playerAId),
+    getPlayer(match.playerBId),
+    match.winnerId ? getPlayer(match.winnerId) : Promise.resolve(null),
+  ]);
+  if (!pa || !pb) notFound();
+
+  const userIds = Array.from(new Set(bets.map((b) => b.userId)));
+  const users = Object.fromEntries(
+    (await Promise.all(userIds.map(getUser)))
+      .filter((u) => !!u)
+      .map((u) => [u!.id, u!]),
+  );
 
   return (
     <div className="space-y-6">
@@ -84,18 +95,24 @@ export default async function AdminMatchDetailPage({
           {fmtDateTime(match.startsAt)} · {match.status}
         </div>
         <h1 className="mt-2 text-xl font-bold">
-          {match.playerA.firstName} {match.playerA.lastName} vs{' '}
-          {match.playerB.firstName} {match.playerB.lastName}
+          {pa.firstName} {pa.lastName} vs {pb.firstName} {pb.lastName}
         </h1>
         <div className="mt-2 text-sm text-white/60">
-          Cotes : {fmtOdds(Number(match.oddsA))} /{' '}
-          {fmtOdds(Number(match.oddsB))} · Mises :{' '}
+          Cotes : {fmtOdds(match.oddsA)} / {fmtOdds(match.oddsB)} · Mises :{' '}
           {fmtPoints(match.totalStakeA)} / {fmtPoints(match.totalStakeB)}
         </div>
+        {winner && (
+          <div className="mt-2 text-sm">
+            Vainqueur :{' '}
+            <span className="font-semibold text-success">
+              {winner.firstName} {winner.lastName}
+            </span>
+          </div>
+        )}
       </header>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        {match.status === MatchStatus.SCHEDULED && (
+        {match.status === 'SCHEDULED' && (
           <form action={open}>
             <input type="hidden" name="id" value={match.id} />
             <button className="btn-primary w-full" type="submit">
@@ -103,7 +120,7 @@ export default async function AdminMatchDetailPage({
             </button>
           </form>
         )}
-        {match.status === MatchStatus.OPEN_FOR_BETS && (
+        {match.status === 'OPEN_FOR_BETS' && (
           <form action={lock}>
             <input type="hidden" name="id" value={match.id} />
             <button className="btn-secondary w-full" type="submit">
@@ -111,7 +128,7 @@ export default async function AdminMatchDetailPage({
             </button>
           </form>
         )}
-        {!['SETTLED', 'CANCELLED'].includes(match.status) && (
+        {match.status !== 'SETTLED' && match.status !== 'CANCELLED' && (
           <form action={cancel}>
             <input type="hidden" name="id" value={match.id} />
             <button className="btn-danger w-full" type="submit">
@@ -121,35 +138,32 @@ export default async function AdminMatchDetailPage({
         )}
       </section>
 
-      {match.status !== MatchStatus.SETTLED &&
-        match.status !== MatchStatus.CANCELLED && (
-          <section className="card">
-            <h2 className="mb-3 text-lg font-semibold">Saisir le vainqueur</h2>
-            <form action={settle} className="flex flex-wrap items-end gap-3">
-              <input type="hidden" name="id" value={match.id} />
-              <div className="flex-1 min-w-[200px]">
-                <label className="label">Vainqueur</label>
-                <select name="winnerId" required className="input">
-                  <option value="">—</option>
-                  <option value={match.playerAId}>
-                    {match.playerA.firstName} {match.playerA.lastName}
-                  </option>
-                  <option value={match.playerBId}>
-                    {match.playerB.firstName} {match.playerB.lastName}
-                  </option>
-                </select>
-              </div>
-              <button className="btn-primary" type="submit">
-                Valider et calculer les gains
-              </button>
-            </form>
-          </section>
-        )}
+      {match.status !== 'SETTLED' && match.status !== 'CANCELLED' && (
+        <section className="card">
+          <h2 className="mb-3 text-lg font-semibold">Saisir le vainqueur</h2>
+          <form action={settle} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="id" value={match.id} />
+            <div className="flex-1 min-w-[200px]">
+              <label className="label">Vainqueur</label>
+              <select name="winnerId" required className="input">
+                <option value="">—</option>
+                <option value={match.playerAId}>
+                  {pa.firstName} {pa.lastName}
+                </option>
+                <option value={match.playerBId}>
+                  {pb.firstName} {pb.lastName}
+                </option>
+              </select>
+            </div>
+            <button className="btn-primary" type="submit">
+              Valider et calculer les gains
+            </button>
+          </form>
+        </section>
+      )}
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">
-          Paris ({bets.length})
-        </h2>
+        <h2 className="mb-3 text-lg font-semibold">Paris ({bets.length})</h2>
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead>
@@ -165,17 +179,16 @@ export default async function AdminMatchDetailPage({
             <tbody>
               {bets.map((b) => {
                 const picked =
-                  b.pickedPlayerId === match.playerAId
-                    ? match.playerA
-                    : match.playerB;
+                  b.pickedPlayerId === match.playerAId ? pa : pb;
+                const u = users[b.userId];
                 return (
                   <tr key={b.id} className="border-b border-border/50">
-                    <td className="px-3 py-2">{b.user.username}</td>
+                    <td className="px-3 py-2">{u?.username ?? '—'}</td>
                     <td className="px-3 py-2">
                       {picked.firstName} {picked.lastName}
                     </td>
                     <td className="px-3 py-2 font-mono">
-                      {fmtOdds(Number(b.oddsAtBet))}
+                      {fmtOdds(b.oddsAtBet)}
                     </td>
                     <td className="px-3 py-2 text-right">
                       {fmtPoints(b.stake)}

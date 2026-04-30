@@ -1,8 +1,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SignJWT, jwtVerify } from 'jose';
-import { Role } from '@prisma/client';
-import { prisma } from './prisma';
+import { getUser } from './users';
+import type { Role, User } from './types';
 
 const COOKIE_NAME = 'algent_session';
 const COOKIE_MAX_AGE = 60 * 60 * 24; // 24h
@@ -77,8 +77,8 @@ export async function requireAdmin() {
   return session;
 }
 
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<User | null> {
   const session = await getSession();
   if (!session) return null;
-  return prisma.user.findUnique({ where: { id: session.sub } });
+  return getUser(session.sub);
 }

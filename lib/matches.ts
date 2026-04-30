@@ -1,6 +1,7 @@
-import { BetStatus, MatchStatus, Prisma, TxType } from '@prisma/client';
-import { prisma } from './prisma';
+import { K, kv, newId } from './kv';
 import { computeInitialOdds } from './odds';
+import type { Bet, Match, MatchStatus, OddsSnapshot } from './types';
+import { getPlayer } from './players';
 import { applyWalletDelta } from './wallet';
 
 export class MatchError extends Error {
@@ -8,7 +9,7 @@ export class MatchError extends Error {
     public code:
       | 'MATCH_NOT_FOUND'
       | 'INVALID_WINNER'
-      | 'MATCH_ALREADY_FINALIZED'
+      | 'ALREADY_FINALIZED'
       | 'PLAYER_NOT_FOUND'
       | 'INVALID_TRANSITION',
   ) {
@@ -16,156 +17,193 @@ export class MatchError extends Error {
   }
 }
 
-export async function createMatch(params: {
+export async function getMatch(id: string): Promise<Match | null> {
+  const data = await kv.hgetall<Record<string, string | number>>(K.match(id));
+  if (!data || Object.keys(data).length === 0) return null;
+  return parseMatch(id, data);
+}
+
+export async function listMatches(): Promise<Match[]> {
+  const ids = (await kv.zrange(K.matchesByTime(), 0, -1)) as string[];
+  if (ids.length === 0) return [];
+  const matches = await Promise.all(ids.map(getMatch));
+  return matches.filter((m): m is Match => !!m);
+}
+
+export async function createMatch(input: {
   playerAId: string;
   playerBId: string;
   startsAt: Date;
-}) {
-  const [playerA, playerB] = await Promise.all([
-    prisma.player.findUnique({ where: { id: params.playerAId } }),
-    prisma.player.findUnique({ where: { id: params.playerBId } }),
+}): Promise<Match> {
+  const [pa, pb] = await Promise.all([
+    getPlayer(input.playerAId),
+    getPlayer(input.playerBId),
   ]);
-  if (!playerA || !playerB) throw new MatchError('PLAYER_NOT_FOUND');
+  if (!pa || !pb) throw new MatchError('PLAYER_NOT_FOUND');
 
-  const odds = computeInitialOdds(playerA.seed, playerB.seed);
+  const odds = computeInitialOdds(pa.seed, pb.seed);
+  const id = newId();
+  const startsAtIso = input.startsAt.toISOString();
+  const createdAt = new Date().toISOString();
 
-  return prisma.$transaction(async (tx) => {
-    const match = await tx.match.create({
-      data: {
-        playerAId: params.playerAId,
-        playerBId: params.playerBId,
-        startsAt: params.startsAt,
-        status: MatchStatus.SCHEDULED,
-        oddsA: odds.oddsA,
-        oddsB: odds.oddsB,
-      },
-    });
-    await tx.oddsSnapshot.create({
-      data: {
-        matchId: match.id,
-        oddsA: odds.oddsA,
-        oddsB: odds.oddsB,
-        totalStakeA: 0,
-        totalStakeB: 0,
-        reason: 'INITIAL',
-      },
-    });
-    return match;
+  await kv.hset(K.match(id), {
+    playerAId: input.playerAId,
+    playerBId: input.playerBId,
+    startsAt: startsAtIso,
+    status: 'SCHEDULED',
+    winnerId: '',
+    oddsA: odds.oddsA,
+    oddsB: odds.oddsB,
+    totalStakeA: 0,
+    totalStakeB: 0,
+    createdAt,
   });
+  await kv.zadd(K.matchesByTime(), {
+    score: input.startsAt.getTime(),
+    member: id,
+  });
+  await pushSnapshot(id, {
+    oddsA: odds.oddsA,
+    oddsB: odds.oddsB,
+    totalStakeA: 0,
+    totalStakeB: 0,
+    reason: 'INITIAL',
+    createdAt,
+  });
+
+  return (await getMatch(id))!;
 }
+
+const ALLOWED: Record<MatchStatus, MatchStatus[]> = {
+  SCHEDULED: ['OPEN_FOR_BETS', 'CANCELLED'],
+  OPEN_FOR_BETS: ['LOCKED', 'CANCELLED'],
+  LOCKED: ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS: ['FINISHED', 'CANCELLED'],
+  FINISHED: ['SETTLED'],
+  SETTLED: [],
+  CANCELLED: [],
+};
 
 export async function transitionMatchStatus(
   matchId: string,
   next: MatchStatus,
-) {
-  const match = await prisma.match.findUnique({ where: { id: matchId } });
+): Promise<void> {
+  const match = await getMatch(matchId);
   if (!match) throw new MatchError('MATCH_NOT_FOUND');
-
-  const allowed: Record<MatchStatus, MatchStatus[]> = {
-    SCHEDULED: ['OPEN_FOR_BETS', 'CANCELLED'],
-    OPEN_FOR_BETS: ['LOCKED', 'CANCELLED'],
-    LOCKED: ['IN_PROGRESS', 'CANCELLED'],
-    IN_PROGRESS: ['FINISHED', 'CANCELLED'],
-    FINISHED: ['SETTLED'],
-    SETTLED: [],
-    CANCELLED: [],
-  };
-  if (!allowed[match.status].includes(next)) {
+  if (!ALLOWED[match.status].includes(next)) {
     throw new MatchError('INVALID_TRANSITION');
   }
-
-  return prisma.match.update({
-    where: { id: matchId },
-    data: { status: next },
-  });
+  await kv.hset(K.match(matchId), { status: next });
 }
 
-export async function settleMatch(matchId: string, winnerId: string) {
-  return prisma.$transaction(
-    async (tx) => {
-      const match = await tx.match.findUnique({ where: { id: matchId } });
-      if (!match) throw new MatchError('MATCH_NOT_FOUND');
-      if (![match.playerAId, match.playerBId].includes(winnerId)) {
-        throw new MatchError('INVALID_WINNER');
-      }
-      if (
-        match.status === MatchStatus.SETTLED ||
-        match.status === MatchStatus.CANCELLED
-      ) {
-        throw new MatchError('MATCH_ALREADY_FINALIZED');
-      }
+export async function settleMatch(matchId: string, winnerId: string): Promise<void> {
+  const match = await getMatch(matchId);
+  if (!match) throw new MatchError('MATCH_NOT_FOUND');
+  if (![match.playerAId, match.playerBId].includes(winnerId)) {
+    throw new MatchError('INVALID_WINNER');
+  }
+  if (match.status === 'SETTLED' || match.status === 'CANCELLED') {
+    throw new MatchError('ALREADY_FINALIZED');
+  }
 
-      const bets = await tx.bet.findMany({
-        where: { matchId, status: BetStatus.PENDING },
-      });
+  const pendingIds = await kv.smembers(K.pendingBetsByMatch(matchId));
+  const ids = (pendingIds ?? []) as string[];
 
-      for (const bet of bets) {
-        const won = bet.pickedPlayerId === winnerId;
-        if (won) {
-          const payout = Math.floor(bet.stake * Number(bet.oddsAtBet));
-          await tx.bet.update({
-            where: { id: bet.id },
-            data: {
-              status: BetStatus.WON,
-              payout,
-              settledAt: new Date(),
-            },
-          });
-          await applyWalletDelta(tx, bet.userId, payout, TxType.BET_WON, {
-            betId: bet.id,
-            matchId,
-          });
-        } else {
-          await tx.bet.update({
-            where: { id: bet.id },
-            data: {
-              status: BetStatus.LOST,
-              payout: 0,
-              settledAt: new Date(),
-            },
-          });
-          const user = await tx.user.findUnique({ where: { id: bet.userId } });
-          await tx.pointTransaction.create({
-            data: {
-              userId: bet.userId,
-              type: TxType.BET_LOST,
-              amount: 0,
-              balanceAfter: user!.balance,
-              betId: bet.id,
-              matchId,
-            },
-          });
-        }
-      }
+  for (const betId of ids) {
+    const bet = await kv.get<Bet>(K.bet(betId));
+    if (!bet || bet.status !== 'PENDING') continue;
 
-      return tx.match.update({
-        where: { id: matchId },
-        data: { status: MatchStatus.SETTLED, winnerId },
-      });
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-  );
-}
-
-export async function cancelMatch(matchId: string) {
-  return prisma.$transaction(async (tx) => {
-    const bets = await tx.bet.findMany({
-      where: { matchId, status: BetStatus.PENDING },
-    });
-    for (const bet of bets) {
-      await tx.bet.update({
-        where: { id: bet.id },
-        data: { status: BetStatus.CANCELLED, settledAt: new Date() },
-      });
-      await applyWalletDelta(tx, bet.userId, bet.stake, TxType.ADMIN_ADJUSTMENT, {
-        betId: bet.id,
+    const won = bet.pickedPlayerId === winnerId;
+    if (won) {
+      const payout = Math.floor(bet.stake * bet.oddsAtBet);
+      const updated: Bet = {
+        ...bet,
+        status: 'WON',
+        payout,
+        settledAt: new Date().toISOString(),
+      };
+      await kv.set(K.bet(betId), updated);
+      await applyWalletDelta(bet.userId, payout, 'BET_WON', {
+        betId,
         matchId,
-        metadata: { reason: 'MATCH_CANCELLED' },
       });
+    } else {
+      const updated: Bet = {
+        ...bet,
+        status: 'LOST',
+        payout: 0,
+        settledAt: new Date().toISOString(),
+      };
+      await kv.set(K.bet(betId), updated);
+      await applyWalletDelta(bet.userId, 0, 'BET_LOST', { betId, matchId });
     }
-    return tx.match.update({
-      where: { id: matchId },
-      data: { status: MatchStatus.CANCELLED },
+
+    // Libère les guards uniquement après transition
+    await Promise.all([
+      kv.del(K.pendingBetGuard(bet.userId, matchId)),
+      kv.srem(K.pendingBetsByMatch(matchId), betId),
+    ]);
+  }
+
+  await kv.hset(K.match(matchId), { status: 'SETTLED', winnerId });
+}
+
+export async function cancelMatch(matchId: string): Promise<void> {
+  const match = await getMatch(matchId);
+  if (!match) throw new MatchError('MATCH_NOT_FOUND');
+
+  const pendingIds = (await kv.smembers(K.pendingBetsByMatch(matchId))) as
+    | string[]
+    | null;
+
+  for (const betId of pendingIds ?? []) {
+    const bet = await kv.get<Bet>(K.bet(betId));
+    if (!bet || bet.status !== 'PENDING') continue;
+
+    const updated: Bet = {
+      ...bet,
+      status: 'CANCELLED',
+      settledAt: new Date().toISOString(),
+    };
+    await kv.set(K.bet(betId), updated);
+    await applyWalletDelta(bet.userId, bet.stake, 'ADMIN_ADJUSTMENT', {
+      betId,
+      matchId,
+      metadata: { reason: 'MATCH_CANCELLED' },
     });
-  });
+    await Promise.all([
+      kv.del(K.pendingBetGuard(bet.userId, matchId)),
+      kv.srem(K.pendingBetsByMatch(matchId), betId),
+    ]);
+  }
+
+  await kv.hset(K.match(matchId), { status: 'CANCELLED' });
+}
+
+export async function listOddsSnapshots(matchId: string): Promise<OddsSnapshot[]> {
+  const items = (await kv.lrange(K.oddsSnapshots(matchId), 0, -1)) as
+    | OddsSnapshot[]
+    | null;
+  return items ?? [];
+}
+
+export async function pushSnapshot(matchId: string, snap: OddsSnapshot) {
+  await kv.rpush(K.oddsSnapshots(matchId), snap);
+}
+
+function parseMatch(id: string, raw: Record<string, string | number>): Match {
+  const winnerId = raw.winnerId ? String(raw.winnerId) : '';
+  return {
+    id,
+    playerAId: String(raw.playerAId ?? ''),
+    playerBId: String(raw.playerBId ?? ''),
+    startsAt: String(raw.startsAt ?? ''),
+    status: (raw.status as MatchStatus) ?? 'SCHEDULED',
+    winnerId: winnerId.length > 0 ? winnerId : null,
+    oddsA: Number(raw.oddsA ?? 0),
+    oddsB: Number(raw.oddsB ?? 0),
+    totalStakeA: Number(raw.totalStakeA ?? 0),
+    totalStakeB: Number(raw.totalStakeB ?? 0),
+    createdAt: String(raw.createdAt ?? ''),
+  };
 }

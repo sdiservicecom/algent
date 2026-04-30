@@ -1,35 +1,45 @@
 import Link from 'next/link';
-import { BetStatus } from '@prisma/client';
 import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { getUser } from '@/lib/users';
+import { listUserBets } from '@/lib/bets';
+import { getMatch } from '@/lib/matches';
+import { getPlayer } from '@/lib/players';
 import { hasReceivedTodayBonus } from '@/lib/daily-bonus';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
 import { getLeaderboard } from '@/lib/leaderboard';
 
 export default async function DashboardPage() {
   const session = await requireUser();
-  const [user, activeBets, lastSettled, bonus, leaderboard] = await Promise.all(
-    [
-      prisma.user.findUnique({ where: { id: session.sub } }),
-      prisma.bet.findMany({
-        where: { userId: session.sub, status: BetStatus.PENDING },
-        include: { match: { include: { playerA: true, playerB: true } } },
-        orderBy: { placedAt: 'desc' },
-      }),
-      prisma.bet.findMany({
-        where: {
-          userId: session.sub,
-          status: { in: [BetStatus.WON, BetStatus.LOST] },
-        },
-        include: { match: { include: { playerA: true, playerB: true } } },
-        orderBy: { settledAt: 'desc' },
-        take: 5,
-      }),
-      hasReceivedTodayBonus(session.sub),
-      getLeaderboard(),
-    ],
-  );
+  const [user, allBets, bonus, leaderboard] = await Promise.all([
+    getUser(session.sub),
+    listUserBets(session.sub),
+    hasReceivedTodayBonus(session.sub),
+    getLeaderboard(),
+  ]);
   if (!user) return null;
+
+  const activeBets = allBets.filter((b) => b.status === 'PENDING');
+  const lastSettled = allBets
+    .filter((b) => b.status === 'WON' || b.status === 'LOST')
+    .slice(0, 5);
+
+  // Hydrate matchs + joueurs
+  const matchIds = Array.from(
+    new Set([...activeBets, ...lastSettled].map((b) => b.matchId)),
+  );
+  const matches = Object.fromEntries(
+    (await Promise.all(matchIds.map(getMatch)))
+      .filter((m) => !!m)
+      .map((m) => [m!.id, m!]),
+  );
+  const playerIds = Array.from(
+    new Set(Object.values(matches).flatMap((m) => [m.playerAId, m.playerBId])),
+  );
+  const players = Object.fromEntries(
+    (await Promise.all(playerIds.map(getPlayer)))
+      .filter((p) => !!p)
+      .map((p) => [p!.id, p!]),
+  );
 
   const myRank = leaderboard.find((r) => r.userId === session.sub);
 
@@ -79,19 +89,21 @@ export default async function DashboardPage() {
         ) : (
           <ul className="grid gap-3 md:grid-cols-2">
             {activeBets.map((b) => {
-              const picked =
-                b.pickedPlayerId === b.match.playerAId
-                  ? b.match.playerA
-                  : b.match.playerB;
+              const m = matches[b.matchId];
+              if (!m) return null;
+              const pa = players[m.playerAId];
+              const pb = players[m.playerBId];
+              const picked = players[b.pickedPlayerId];
+              if (!pa || !pb || !picked) return null;
               return (
                 <li key={b.id} className="card">
                   <div className="text-sm text-white/60">
-                    {b.match.playerA.firstName} {b.match.playerA.lastName} vs{' '}
-                    {b.match.playerB.firstName} {b.match.playerB.lastName}
+                    {pa.firstName} {pa.lastName} vs {pb.firstName}{' '}
+                    {pb.lastName}
                   </div>
                   <div className="mt-1 font-medium">
                     Pari sur {picked.firstName} {picked.lastName} @{' '}
-                    {fmtOdds(Number(b.oddsAtBet))}
+                    {fmtOdds(b.oddsAtBet)}
                   </div>
                   <div className="mt-1 text-sm">
                     Mise{' '}
@@ -102,7 +114,7 @@ export default async function DashboardPage() {
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-white/50">
-                    Match : {fmtDateTime(b.match.startsAt)}
+                    Match : {fmtDateTime(m.startsAt)}
                   </div>
                 </li>
               );
@@ -114,37 +126,45 @@ export default async function DashboardPage() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">Derniers résultats</h2>
         {lastSettled.length === 0 ? (
-          <div className="card text-sm text-white/60">Pas encore de résultats.</div>
+          <div className="card text-sm text-white/60">
+            Pas encore de résultats.
+          </div>
         ) : (
           <ul className="space-y-2">
-            {lastSettled.map((b) => (
-              <li
-                key={b.id}
-                className="card flex items-center justify-between text-sm"
-              >
-                <div>
-                  <span className="text-white/60">
-                    {b.match.playerA.firstName} vs {b.match.playerB.firstName}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-white/60">
-                    Mise {fmtPoints(b.stake)}
-                  </span>
-                  <span
-                    className={
-                      b.status === BetStatus.WON
-                        ? 'pill bg-success/20 text-success'
-                        : 'pill bg-danger/20 text-danger'
-                    }
-                  >
-                    {b.status === BetStatus.WON
-                      ? `+${fmtPoints(b.payout ?? 0)}`
-                      : `-${fmtPoints(b.stake)}`}
-                  </span>
-                </div>
-              </li>
-            ))}
+            {lastSettled.map((b) => {
+              const m = matches[b.matchId];
+              if (!m) return null;
+              const pa = players[m.playerAId];
+              const pb = players[m.playerBId];
+              return (
+                <li
+                  key={b.id}
+                  className="card flex items-center justify-between text-sm"
+                >
+                  <div>
+                    <span className="text-white/60">
+                      {pa?.firstName} vs {pb?.firstName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-white/60">
+                      Mise {fmtPoints(b.stake)}
+                    </span>
+                    <span
+                      className={
+                        b.status === 'WON'
+                          ? 'pill bg-success/20 text-success'
+                          : 'pill bg-danger/20 text-danger'
+                      }
+                    >
+                      {b.status === 'WON'
+                        ? `+${fmtPoints(b.payout ?? 0)}`
+                        : `-${fmtPoints(b.stake)}`}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

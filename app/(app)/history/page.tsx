@@ -1,22 +1,32 @@
-import { BetStatus } from '@prisma/client';
 import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { listUserBets } from '@/lib/bets';
+import { listUserTransactions } from '@/lib/wallet';
+import { getMatch } from '@/lib/matches';
+import { getPlayer } from '@/lib/players';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
+import type { BetStatus } from '@/lib/types';
 
 export default async function HistoryPage() {
   const session = await requireUser();
   const [bets, txs] = await Promise.all([
-    prisma.bet.findMany({
-      where: { userId: session.sub },
-      include: { match: { include: { playerA: true, playerB: true } } },
-      orderBy: { placedAt: 'desc' },
-    }),
-    prisma.pointTransaction.findMany({
-      where: { userId: session.sub },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    }),
+    listUserBets(session.sub),
+    listUserTransactions(session.sub, 50),
   ]);
+
+  const matchIds = Array.from(new Set(bets.map((b) => b.matchId)));
+  const matches = Object.fromEntries(
+    (await Promise.all(matchIds.map(getMatch)))
+      .filter((m) => !!m)
+      .map((m) => [m!.id, m!]),
+  );
+  const playerIds = Array.from(
+    new Set(Object.values(matches).flatMap((m) => [m.playerAId, m.playerBId])),
+  );
+  const players = Object.fromEntries(
+    (await Promise.all(playerIds.map(getPlayer)))
+      .filter((p) => !!p)
+      .map((p) => [p!.id, p!]),
+  );
 
   return (
     <div className="space-y-8">
@@ -40,32 +50,33 @@ export default async function HistoryPage() {
               </thead>
               <tbody>
                 {bets.map((b) => {
-                  const picked =
-                    b.pickedPlayerId === b.match.playerAId
-                      ? b.match.playerA
-                      : b.match.playerB;
+                  const m = matches[b.matchId];
+                  const pa = m && players[m.playerAId];
+                  const pb = m && players[m.playerBId];
+                  const picked = players[b.pickedPlayerId];
                   return (
                     <tr key={b.id} className="border-b border-border/50">
                       <td className="px-3 py-2 text-white/60">
                         {fmtDateTime(b.placedAt)}
                       </td>
                       <td className="px-3 py-2">
-                        {b.match.playerA.firstName} vs{' '}
-                        {b.match.playerB.firstName}
+                        {pa?.firstName} vs {pb?.firstName}
                       </td>
                       <td className="px-3 py-2">
-                        {picked.firstName} {picked.lastName}
+                        {picked
+                          ? `${picked.firstName} ${picked.lastName}`
+                          : '—'}
                       </td>
                       <td className="px-3 py-2 font-mono">
-                        {fmtOdds(Number(b.oddsAtBet))}
+                        {fmtOdds(b.oddsAtBet)}
                       </td>
                       <td className="px-3 py-2">{fmtPoints(b.stake)}</td>
                       <td className="px-3 py-2">
-                        {b.status === BetStatus.WON ? (
+                        {b.status === 'WON' ? (
                           <span className="text-success">
                             +{fmtPoints(b.payout ?? 0)}
                           </span>
-                        ) : b.status === BetStatus.LOST ? (
+                        ) : b.status === 'LOST' ? (
                           <span className="text-danger">
                             -{fmtPoints(b.stake)}
                           </span>
@@ -134,7 +145,10 @@ function StatusPill({ status }: { status: BetStatus }) {
     PENDING: { label: 'En cours', className: 'bg-white/10 text-white/70' },
     WON: { label: 'Gagné', className: 'bg-success/20 text-success' },
     LOST: { label: 'Perdu', className: 'bg-danger/20 text-danger' },
-    CANCELLED: { label: 'Annulé', className: 'bg-yellow-500/20 text-yellow-400' },
+    CANCELLED: {
+      label: 'Annulé',
+      className: 'bg-yellow-500/20 text-yellow-400',
+    },
   };
   const m = map[status];
   return <span className={`pill ${m.className}`}>{m.label}</span>;
