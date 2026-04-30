@@ -11,6 +11,18 @@ export type MatchStatus =
 
 export type BetStatus = 'PENDING' | 'WON' | 'LOST' | 'CANCELLED';
 
+export type MatchRound = 'R32' | 'R16' | 'QF' | 'SF' | 'FINAL';
+
+export const MATCH_ROUNDS: MatchRound[] = ['R32', 'R16', 'QF', 'SF', 'FINAL'];
+
+export const MATCH_ROUND_LABEL: Record<MatchRound, string> = {
+  R32: '16e de finale',
+  R16: 'Huitième',
+  QF: 'Quart',
+  SF: 'Demi-finale',
+  FINAL: 'Finale',
+};
+
 export type TxType =
   | 'INITIAL_CREDIT'
   | 'DAILY_BONUS'
@@ -46,6 +58,8 @@ export interface Match {
   playerBId: string;
   startsAt: string;
   status: MatchStatus;
+  round: MatchRound | null;
+  bracketSlot: number | null;
   winnerId: string | null;
   oddsA: number;
   oddsB: number;

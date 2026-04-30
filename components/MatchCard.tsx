@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { useBasket } from './BasketContext';
 import { PlayerAvatar } from './PlayerAvatar';
 import { fmtDateTime, fmtOdds, fmtPoints } from '@/lib/format';
-import type { Match, MatchStatus, Player } from '@/lib/types';
+import {
+  MATCH_ROUND_LABEL,
+  type Match,
+  type MatchStatus,
+  type Player,
+} from '@/lib/types';
 
 const STATUS_LABEL: Record<MatchStatus, { label: string; color: string }> = {
   SCHEDULED: { label: 'À venir', color: 'bg-white/10 text-white/70' },
@@ -98,8 +103,15 @@ export function MatchCard({ match, pa, pb, winner }: Props) {
 
   return (
     <li className="card">
-      <div className="flex items-center justify-between">
-        <span className={`pill ${status.color}`}>{status.label}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`pill ${status.color}`}>{status.label}</span>
+          {match.round && (
+            <span className="pill bg-white/10 text-white/70">
+              {MATCH_ROUND_LABEL[match.round]}
+            </span>
+          )}
+        </div>
         <span className="text-xs text-white/50">
           {fmtDateTime(match.startsAt)}
         </span>

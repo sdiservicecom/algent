@@ -41,6 +41,9 @@ export default async function AppLayout({
               <Link href="/matches" className="shrink-0 hover:text-accent">
                 Matchs
               </Link>
+              <Link href="/bracket" className="shrink-0 hover:text-accent">
+                Bracket
+              </Link>
               <Link href="/history" className="shrink-0 hover:text-accent">
                 Historique
               </Link>

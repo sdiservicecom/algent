@@ -5,6 +5,11 @@ import { requireAdmin } from '@/lib/auth';
 import { createMatch, listMatches } from '@/lib/matches';
 import { listPlayers } from '@/lib/players';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
+import {
+  MATCH_ROUNDS,
+  MATCH_ROUND_LABEL,
+  type MatchRound,
+} from '@/lib/types';
 
 async function createMatchAction(formData: FormData) {
   'use server';
@@ -12,6 +17,8 @@ async function createMatchAction(formData: FormData) {
   const playerAId = String(formData.get('playerAId'));
   const playerBId = String(formData.get('playerBId'));
   const startsAtRaw = String(formData.get('startsAt'));
+  const roundRaw = String(formData.get('round') ?? '');
+  const slotRaw = String(formData.get('bracketSlot') ?? '');
   if (!playerAId || !playerBId || playerAId === playerBId || !startsAtRaw) {
     return redirect('/admin/matches?error=validation');
   }
@@ -19,9 +26,17 @@ async function createMatchAction(formData: FormData) {
   if (Number.isNaN(startsAt.getTime())) {
     return redirect('/admin/matches?error=validation');
   }
-  await createMatch({ playerAId, playerBId, startsAt });
+  const round = (MATCH_ROUNDS as readonly string[]).includes(roundRaw)
+    ? (roundRaw as MatchRound)
+    : null;
+  const bracketSlot =
+    slotRaw && Number.isFinite(Number(slotRaw)) && Number(slotRaw) >= 1
+      ? Math.floor(Number(slotRaw))
+      : null;
+  await createMatch({ playerAId, playerBId, startsAt, round, bracketSlot });
   revalidatePath('/admin/matches');
   revalidatePath('/matches');
+  revalidatePath('/bracket');
   redirect('/admin/matches?ok=1');
 }
 
@@ -44,9 +59,9 @@ export default async function AdminMatchesPage({
 
       <form
         action={createMatchAction}
-        className="card grid grid-cols-1 gap-3 md:grid-cols-4"
+        className="card grid grid-cols-1 gap-3 md:grid-cols-6"
       >
-        <div>
+        <div className="md:col-span-2">
           <label className="label">Joueur A</label>
           <select name="playerAId" required className="input">
             <option value="">—</option>
@@ -57,7 +72,7 @@ export default async function AdminMatchesPage({
             ))}
           </select>
         </div>
-        <div>
+        <div className="md:col-span-2">
           <label className="label">Joueur B</label>
           <select name="playerBId" required className="input">
             <option value="">—</option>
@@ -68,7 +83,7 @@ export default async function AdminMatchesPage({
             ))}
           </select>
         </div>
-        <div>
+        <div className="md:col-span-2">
           <label className="label">Date & heure</label>
           <input
             name="startsAt"
@@ -77,16 +92,37 @@ export default async function AdminMatchesPage({
             className="input"
           />
         </div>
-        <div className="flex items-end">
+        <div className="md:col-span-2">
+          <label className="label">Phase (bracket)</label>
+          <select name="round" className="input">
+            <option value="">— hors bracket</option>
+            {MATCH_ROUNDS.map((r) => (
+              <option key={r} value={r}>
+                {MATCH_ROUND_LABEL[r]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="md:col-span-2">
+          <label className="label">Slot dans la phase (1, 2, 3…)</label>
+          <input
+            name="bracketSlot"
+            type="number"
+            min={1}
+            placeholder="ordre dans le bracket"
+            className="input"
+          />
+        </div>
+        <div className="flex items-end md:col-span-2">
           <button className="btn-primary w-full" type="submit">
             Créer
           </button>
         </div>
         {sp.error && (
-          <p className="md:col-span-4 text-sm text-danger">Champs invalides.</p>
+          <p className="md:col-span-6 text-sm text-danger">Champs invalides.</p>
         )}
         {sp.ok && (
-          <p className="md:col-span-4 text-sm text-success">Match créé.</p>
+          <p className="md:col-span-6 text-sm text-success">Match créé.</p>
         )}
       </form>
 

@@ -1,6 +1,6 @@
 import { K, kv, newId } from './kv';
 import { computeInitialOdds } from './odds';
-import type { Bet, Match, MatchStatus, OddsSnapshot } from './types';
+import type { Bet, Match, MatchRound, MatchStatus, OddsSnapshot } from './types';
 import { getPlayer } from './players';
 import { createNotification } from './notifications';
 import { applyWalletDelta } from './wallet';
@@ -36,6 +36,8 @@ export async function createMatch(input: {
   playerAId: string;
   playerBId: string;
   startsAt: Date;
+  round?: MatchRound | null;
+  bracketSlot?: number | null;
 }): Promise<Match> {
   const [pa, pb] = await Promise.all([
     getPlayer(input.playerAId),
@@ -54,6 +56,8 @@ export async function createMatch(input: {
     startsAt: startsAtIso,
     status: 'SCHEDULED',
     winnerId: '',
+    round: input.round ?? '',
+    bracketSlot: input.bracketSlot ?? '',
     oddsA: odds.oddsA,
     oddsB: odds.oddsB,
     totalStakeA: 0,
@@ -210,6 +214,19 @@ export async function cancelMatch(matchId: string): Promise<void> {
   await kv.hset(K.match(matchId), { status: 'CANCELLED' });
 }
 
+export async function setMatchBracketInfo(
+  matchId: string,
+  round: MatchRound | null,
+  bracketSlot: number | null,
+): Promise<void> {
+  const match = await getMatch(matchId);
+  if (!match) throw new MatchError('MATCH_NOT_FOUND');
+  await kv.hset(K.match(matchId), {
+    round: round ?? '',
+    bracketSlot: bracketSlot ?? '',
+  });
+}
+
 export async function listOddsSnapshots(matchId: string): Promise<OddsSnapshot[]> {
   const items = (await kv.lrange(K.oddsSnapshots(matchId), 0, -1)) as
     | OddsSnapshot[]
@@ -223,12 +240,19 @@ export async function pushSnapshot(matchId: string, snap: OddsSnapshot) {
 
 function parseMatch(id: string, raw: Record<string, string | number>): Match {
   const winnerId = raw.winnerId ? String(raw.winnerId) : '';
+  const roundRaw = raw.round ? String(raw.round) : '';
+  const slotRaw = raw.bracketSlot;
   return {
     id,
     playerAId: String(raw.playerAId ?? ''),
     playerBId: String(raw.playerBId ?? ''),
     startsAt: String(raw.startsAt ?? ''),
     status: (raw.status as MatchStatus) ?? 'SCHEDULED',
+    round: roundRaw ? (roundRaw as MatchRound) : null,
+    bracketSlot:
+      slotRaw === undefined || slotRaw === '' || slotRaw === null
+        ? null
+        : Number(slotRaw),
     winnerId: winnerId.length > 0 ? winnerId : null,
     oddsA: Number(raw.oddsA ?? 0),
     oddsB: Number(raw.oddsB ?? 0),
