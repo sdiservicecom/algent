@@ -100,83 +100,89 @@ export default async function MatchDetailPage({
         <div className="text-xs uppercase text-fg/50">
           {fmtDateTime(match.startsAt)}
         </div>
-        <div className="mt-2 grid grid-cols-1 items-stretch gap-3 sm:grid-cols-[1fr_auto_1fr]">
+        <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
           <div
-            className={`flex min-w-0 items-center gap-3 rounded-lg p-3 transition ${
+            className={`flex flex-col items-center gap-2 rounded-2xl border p-3 transition ${
               aIsWinner
-                ? 'border border-success bg-success/15 ring-1 ring-success'
+                ? 'border-success shadow-glow'
                 : settled
-                  ? 'opacity-60'
-                  : ''
+                  ? 'border-border opacity-60'
+                  : 'border-border'
             }`}
           >
-            <PlayerAvatar player={pa} size={56} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-xl font-bold">
+            <PlayerAvatar player={pa} size={72} />
+            <div className="min-w-0 text-center">
+              <div className="truncate text-base font-bold sm:text-lg">
                 {pa.firstName} {pa.lastName}
               </div>
               {pa.nickname && (
-                <div className="truncate text-sm text-fg/60">
+                <div className="truncate text-xs text-fg/60">
                   « {pa.nickname} »
                 </div>
               )}
-              <div className="text-xs text-fg/50">Seed #{pa.seed}</div>
-              <div
-                className={`mt-1 text-2xl font-bold ${
-                  aIsWinner
-                    ? 'text-success'
-                    : settled
-                      ? 'text-fg/40 line-through'
-                      : 'text-accent'
-                }`}
-              >
-                {fmtOdds(match.oddsA)}
+              <div className="text-[10px] uppercase tracking-wide text-fg/50">
+                Seed #{pa.seed}
               </div>
-              {aIsWinner && (
-                <div className="text-xs font-semibold uppercase text-success">
-                  ✓ Vainqueur
-                </div>
-              )}
             </div>
+            <div
+              className={`odds-pill ${
+                aIsWinner
+                  ? 'border-success text-success'
+                  : settled
+                    ? 'odds-pill-loser'
+                    : ''
+              }`}
+            >
+              {fmtOdds(match.oddsA)}
+            </div>
+            {aIsWinner && (
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-success">
+                ✓ Vainqueur
+              </div>
+            )}
           </div>
-          <div className="self-center text-center text-fg/40">vs</div>
+          <div className="self-center text-sm font-semibold text-fg/40">
+            vs
+          </div>
           <div
-            className={`flex min-w-0 items-center gap-3 rounded-lg p-3 transition sm:flex-row-reverse sm:text-right ${
+            className={`flex flex-col items-center gap-2 rounded-2xl border p-3 transition ${
               bIsWinner
-                ? 'border border-success bg-success/15 ring-1 ring-success'
+                ? 'border-success shadow-glow'
                 : settled
-                  ? 'opacity-60'
-                  : ''
+                  ? 'border-border opacity-60'
+                  : 'border-border'
             }`}
           >
-            <PlayerAvatar player={pb} size={56} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-xl font-bold">
+            <PlayerAvatar player={pb} size={72} />
+            <div className="min-w-0 text-center">
+              <div className="truncate text-base font-bold sm:text-lg">
                 {pb.firstName} {pb.lastName}
               </div>
               {pb.nickname && (
-                <div className="truncate text-sm text-fg/60">
+                <div className="truncate text-xs text-fg/60">
                   « {pb.nickname} »
                 </div>
               )}
-              <div className="text-xs text-fg/50">Seed #{pb.seed}</div>
-              <div
-                className={`mt-1 text-2xl font-bold ${
-                  bIsWinner
-                    ? 'text-success'
-                    : settled
-                      ? 'text-fg/40 line-through'
-                      : 'text-accent'
-                }`}
-              >
-                {fmtOdds(match.oddsB)}
+              <div className="text-[10px] uppercase tracking-wide text-fg/50">
+                Seed #{pb.seed}
               </div>
-              {bIsWinner && (
-                <div className="text-xs font-semibold uppercase text-success">
-                  ✓ Vainqueur
-                </div>
-              )}
             </div>
+            <div
+              className={`odds-pill ${
+                bIsWinner
+                  ? 'border-success text-success'
+                  : settled
+                    ? 'odds-pill-loser'
+                    : ''
+              }`}
+            >
+              {fmtOdds(match.oddsB)}
+            </div>
+            {bIsWinner && (
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-success">
+                ✓ Vainqueur
+              </div>
+            )}
           </div>
         </div>
 

@@ -30,7 +30,7 @@ interface Props {
 }
 
 export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
-  const { isPicked, toggle } = useBasket();
+  const { isPicked, hasMatch, toggle } = useBasket();
   const total = match.totalStakeA + match.totalStakeB;
   const ratioA = total > 0 ? match.totalStakeA / total : 0.5;
   const status = STATUS_LABEL[match.status];
@@ -41,6 +41,7 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
 
   const matchLabel = `${pa.firstName} ${pa.lastName} vs ${pb.firstName} ${pb.lastName}`;
   const settled = match.status === 'SETTLED' && winner;
+  const inBasket = hasMatch(match.id) && canBet;
 
   const renderOdds = (player: Player, odds: number, label: string) => {
     const picked = isPicked(match.id, player.id);
@@ -49,19 +50,23 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
       const isWinner = winner!.id === player.id;
       return (
         <div
-          className={`rounded-md border p-2 ${
+          className={`flex flex-col items-center gap-2 rounded-2xl border p-3 ${
             isWinner
-              ? 'border-success bg-success/20 ring-1 ring-success'
-              : 'border-border bg-fg/5 opacity-60'
+              ? 'border-success bg-success/5 shadow-glow'
+              : 'border-border opacity-60'
           }`}
         >
           <div
-            className={`text-xs ${isWinner ? 'text-success' : 'text-fg/50'}`}
+            className={`text-xs font-medium uppercase tracking-wide ${
+              isWinner ? 'text-success' : 'text-fg/50'
+            }`}
           >
             {isWinner ? '✓ Vainqueur' : label}
           </div>
           <div
-            className={`font-bold ${isWinner ? 'text-success' : 'text-fg/60 line-through'}`}
+            className={`odds-pill ${
+              isWinner ? 'border-success text-success' : 'odds-pill-loser'
+            }`}
           >
             {fmtOdds(odds)}
           </div>
@@ -71,9 +76,9 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
 
     if (!canBet) {
       return (
-        <div className="rounded-md border border-border bg-surface p-2">
-          <div className="text-xs text-fg/50">{label}</div>
-          <div className="font-bold text-accent">{fmtOdds(odds)}</div>
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-border p-3">
+          <div className="text-xs uppercase text-fg/50">{label}</div>
+          <div className="odds-pill">{fmtOdds(odds)}</div>
         </div>
       );
     }
@@ -92,20 +97,22 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
             playerBLabel: pb.firstName,
           })
         }
-        className={`rounded-md border p-2 text-left transition ${
+        className={`flex flex-col items-center gap-2 rounded-2xl border p-3 transition ${
           picked
-            ? 'border-accent bg-accent/15 ring-1 ring-accent'
-            : 'border-border bg-surface hover:border-fg/40'
+            ? 'border-accent bg-accent/5 shadow-glow'
+            : 'border-border hover:border-accent/60'
         }`}
       >
-        <div className="text-xs text-fg/50">{label}</div>
-        <div className="font-bold text-accent">{fmtOdds(odds)}</div>
+        <div className="text-xs uppercase text-fg/50">{label}</div>
+        <div className={`odds-pill ${picked ? 'odds-pill-active' : ''}`}>
+          {fmtOdds(odds)}
+        </div>
       </button>
     );
   };
 
   return (
-    <li className="card">
+    <li className={inBasket ? 'card-active' : 'card'}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className={`pill ${status.color}`}>{status.label}</span>
