@@ -1,0 +1,172 @@
+// Modèle de données — App de paris virtuels interne
+//
+// Conventions:
+//   - Solde et mises stockés en Int (jamais de Decimal/float).
+//   - Cotes stockées en Decimal(6,3).
+//   - Toute mutation de solde donne lieu à 1 ligne PointTransaction (balanceAfter snapshot).
+//
+// Migration SQL complémentaire requise (partial unique index):
+//   CREATE UNIQUE INDEX one_pending_bet_per_match
+//     ON "Bet" ("userId", "matchId") WHERE status = 'PENDING';
+//   CREATE UNIQUE INDEX user_username_lower_unique
+//     ON "User" (LOWER("username"));
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum MatchStatus {
+  SCHEDULED
+  OPEN_FOR_BETS
+  LOCKED
+  IN_PROGRESS
+  FINISHED
+  SETTLED
+  CANCELLED
+}
+
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+  CANCELLED
+}
+
+enum TxType {
+  INITIAL_CREDIT
+  DAILY_BONUS
+  BET_PLACED
+  BET_WON
+  BET_LOST
+  ADMIN_ADJUSTMENT
+}
+
+model User {
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  username     String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  balance      Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  bets         Bet[]
+  transactions PointTransaction[]
+  dailyBonuses DailyBonus[]
+
+  @@index([balance])
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  seed      Int      @unique
+  createdAt DateTime @default(now())
+
+  matchesA   Match[] @relation("PlayerA")
+  matchesB   Match[] @relation("PlayerB")
+  matchesWon Match[] @relation("Winner")
+}
+
+model Match {
+  id          String      @id @default(uuid())
+  playerAId   String
+  playerBId   String
+  startsAt    DateTime
+  status      MatchStatus @default(SCHEDULED)
+  winnerId    String?
+
+  oddsA       Decimal     @db.Decimal(6, 3)
+  oddsB       Decimal     @db.Decimal(6, 3)
+
+  totalStakeA Int         @default(0)
+  totalStakeB Int         @default(0)
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  playerA       Player        @relation("PlayerA", fields: [playerAId], references: [id])
+  playerB       Player        @relation("PlayerB", fields: [playerBId], references: [id])
+  winner        Player?       @relation("Winner", fields: [winnerId], references: [id])
+  bets          Bet[]
+  oddsSnapshots OddsSnapshot[]
+
+  @@index([status, startsAt])
+}
+
+model Bet {
+  id             String    @id @default(uuid())
+  userId         String
+  matchId        String
+  pickedPlayerId String
+  stake          Int
+  oddsAtBet      Decimal   @db.Decimal(6, 3)
+  status         BetStatus @default(PENDING)
+  potentialWin   Int
+  payout         Int?
+  placedAt       DateTime  @default(now())
+  settledAt      DateTime?
+
+  user  User  @relation(fields: [userId], references: [id])
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@index([matchId, status])
+  @@index([userId, status])
+}
+
+model PointTransaction {
+  id           String   @id @default(uuid())
+  userId       String
+  type         TxType
+  amount       Int
+  balanceAfter Int
+  betId        String?
+  matchId      String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+}
+
+model OddsSnapshot {
+  id          String   @id @default(uuid())
+  matchId     String
+  oddsA       Decimal  @db.Decimal(6, 3)
+  oddsB       Decimal  @db.Decimal(6, 3)
+  totalStakeA Int
+  totalStakeB Int
+  reason      String
+  createdAt   DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@index([matchId, createdAt])
+}
+
+model DailyBonus {
+  id        String   @id @default(uuid())
+  userId    String
+  bonusDate DateTime @db.Date
+  amount    Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, bonusDate])
+  @@index([bonusDate])
+}
