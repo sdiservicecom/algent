@@ -1,6 +1,8 @@
 node_modules/
-dist/
+.next/
+out/
 build/
+dist/
 .env
 .env.local
 .env.*.local
@@ -9,3 +11,5 @@ build/
 coverage/
 .vscode/
 .idea/
+.vercel
+next-env.d.ts
