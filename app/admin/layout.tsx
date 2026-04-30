@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { clearSessionCookie, requireAdmin } from '@/lib/auth';
+import { HeaderNav, type NavItem } from '@/components/HeaderNav';
 
 async function logout() {
   'use server';
@@ -14,52 +15,44 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await requireAdmin();
+
+  const navItems: NavItem[] = [
+    { href: '/admin', label: "Vue d'ensemble" },
+    { href: '/admin/players', label: 'Joueurs' },
+    { href: '/admin/matches', label: 'Matchs' },
+    { href: '/admin/tournament', label: 'Tournoi' },
+    { href: '/admin/users', label: 'Utilisateurs' },
+    { href: '/admin/audit', label: 'Journal' },
+    { href: '/dashboard', label: '← Retour app' },
+  ];
+
   return (
     <div className="min-h-screen">
       <header className="bg-accentDark text-white">
-        <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-3 py-3 sm:gap-6 sm:px-4">
+        <nav className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-3 sm:gap-6 sm:px-4">
           <Link
             href="/admin"
             className="font-display text-xl font-semibold tracking-tight text-white"
           >
             Algent · Admin
           </Link>
-          <div className="order-3 -mx-3 flex w-full items-center gap-3 overflow-x-auto px-3 text-sm sm:order-2 sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0">
-            <Link href="/admin" className="shrink-0 text-white/80 hover:text-white">
-              Vue d'ensemble
-            </Link>
-            <Link href="/admin/players" className="shrink-0 text-white/80 hover:text-white">
-              Joueurs
-            </Link>
-            <Link href="/admin/matches" className="shrink-0 text-white/80 hover:text-white">
-              Matchs
-            </Link>
-            <Link
-              href="/admin/tournament"
-              className="shrink-0 text-white/80 hover:text-white"
-            >
-              Tournoi
-            </Link>
-            <Link href="/admin/users" className="shrink-0 text-white/80 hover:text-white">
-              Utilisateurs
-            </Link>
-            <Link href="/admin/audit" className="shrink-0 text-white/80 hover:text-white">
-              Journal
-            </Link>
-            <Link href="/dashboard" className="shrink-0 text-white/80 hover:text-white">
-              ← Retour app
-            </Link>
-          </div>
-          <div className="order-2 ml-auto flex items-center gap-2 text-sm sm:order-3 sm:gap-3">
-            <span className="hidden text-white/70 sm:inline">
+
+          <HeaderNav items={navItems} />
+
+          <div className="ml-auto flex items-center gap-2 text-sm sm:gap-3">
+            <span className="hidden text-white/70 lg:inline">
               {session.username}
             </span>
             <form action={logout}>
               <button
                 type="submit"
                 className="rounded-md border border-white/30 px-2 py-1 text-xs text-white hover:bg-white hover:text-accentDark sm:px-3 sm:text-sm"
+                aria-label="Déconnexion"
+                title="Déconnexion"
               >
-                <span className="sm:hidden">Sortir</span>
+                <span className="sm:hidden" aria-hidden>
+                  ⎋
+                </span>
                 <span className="hidden sm:inline">Déconnexion</span>
               </button>
             </form>

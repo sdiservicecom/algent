@@ -9,6 +9,7 @@ import {
   cachedListPlayers,
   cachedListUserBets,
 } from '@/lib/cache';
+import { UpcomingMatchesBanner } from '@/components/UpcomingMatchesBanner';
 
 export default async function DashboardPage() {
   const session = await requireUser();
@@ -35,6 +36,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <UpcomingMatchesBanner matches={allMatches} players={players} />
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="card">
           <div className="text-xs uppercase text-fg/50">Solde</div>
