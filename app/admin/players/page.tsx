@@ -141,7 +141,7 @@ export default async function AdminPlayersPage({
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
+            <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
               <th className="px-3 py-2">Seed</th>
               <th className="px-3 py-2">Joueur</th>
               <th className="px-3 py-2 text-right">Actions</th>

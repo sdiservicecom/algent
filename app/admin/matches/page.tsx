@@ -129,7 +129,7 @@ export default async function AdminMatchesPage({
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
+            <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Match</th>
               <th className="px-3 py-2">Cotes</th>
@@ -144,7 +144,7 @@ export default async function AdminMatchesPage({
               const pb = playerMap[m.playerBId];
               return (
                 <tr key={m.id} className="border-b border-border/50">
-                  <td className="px-3 py-2 text-white/60">
+                  <td className="px-3 py-2 text-fg/60">
                     {fmtDateTime(m.startsAt)}
                   </td>
                   <td className="px-3 py-2">
@@ -154,11 +154,11 @@ export default async function AdminMatchesPage({
                   <td className="px-3 py-2 font-mono">
                     {fmtOdds(m.oddsA)} / {fmtOdds(m.oddsB)}
                   </td>
-                  <td className="px-3 py-2 text-xs text-white/60">
+                  <td className="px-3 py-2 text-xs text-fg/60">
                     {fmtPoints(m.totalStakeA)} / {fmtPoints(m.totalStakeB)}
                   </td>
                   <td className="px-3 py-2">
-                    <span className="pill bg-white/10 text-white/70">
+                    <span className="pill bg-fg/10 text-fg/70">
                       {m.status}
                     </span>
                   </td>

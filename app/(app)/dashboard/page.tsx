@@ -47,31 +47,31 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="card">
-          <div className="text-xs uppercase text-white/50">Solde</div>
+          <div className="text-xs uppercase text-fg/50">Solde</div>
           <div className="mt-2 text-3xl font-bold">
             {fmtPoints(user.balance)} pts
           </div>
         </div>
         <div className="card">
-          <div className="text-xs uppercase text-white/50">Bonus quotidien</div>
+          <div className="text-xs uppercase text-fg/50">Bonus quotidien</div>
           <div className="mt-2 text-lg">
             {bonus.received ? (
               <span className="text-success">
                 ✓ Reçu ({fmtPoints(bonus.amount ?? 0)} pts)
               </span>
             ) : (
-              <span className="text-white/60">
+              <span className="text-fg/60">
                 Pas encore distribué aujourd'hui
               </span>
             )}
           </div>
         </div>
         <div className="card">
-          <div className="text-xs uppercase text-white/50">Classement</div>
+          <div className="text-xs uppercase text-fg/50">Classement</div>
           <div className="mt-2 text-3xl font-bold">
             {myRank ? `#${myRank.rank}` : '—'}
           </div>
-          <div className="text-sm text-white/60">
+          <div className="text-sm text-fg/60">
             sur {leaderboard.length} joueurs
           </div>
         </div>
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">Paris en cours</h2>
         {activeBets.length === 0 ? (
-          <div className="card text-sm text-white/60">
+          <div className="card text-sm text-fg/60">
             Aucun pari en cours.{' '}
             <Link href="/matches" className="text-accent hover:underline">
               Voir les matchs
@@ -97,7 +97,7 @@ export default async function DashboardPage() {
               if (!pa || !pb || !picked) return null;
               return (
                 <li key={b.id} className="card">
-                  <div className="text-sm text-white/60">
+                  <div className="text-sm text-fg/60">
                     {fmtPlayerName(pa)} vs {fmtPlayerName(pb)}
                   </div>
                   <div className="mt-1 font-medium">
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
                       {fmtPoints(b.potentialWin)}
                     </span>
                   </div>
-                  <div className="mt-1 text-xs text-white/50">
+                  <div className="mt-1 text-xs text-fg/50">
                     Match : {fmtDateTime(m.startsAt)}
                   </div>
                 </li>
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">Derniers résultats</h2>
         {lastSettled.length === 0 ? (
-          <div className="card text-sm text-white/60">
+          <div className="card text-sm text-fg/60">
             Pas encore de résultats.
           </div>
         ) : (
@@ -140,12 +140,12 @@ export default async function DashboardPage() {
                   className="card flex items-center justify-between text-sm"
                 >
                   <div>
-                    <span className="text-white/60">
+                    <span className="text-fg/60">
                       {pa?.firstName} vs {pb?.firstName}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-white/60">
+                    <span className="text-fg/60">
                       Mise {fmtPoints(b.stake)}
                     </span>
                     <span

@@ -74,7 +74,7 @@ export default async function LoginPage({
             Se connecter
           </button>
         </form>
-        <p className="mt-6 text-center text-sm text-white/60">
+        <p className="mt-6 text-center text-sm text-fg/60">
           Pas de compte ?{' '}
           <Link href="/register" className="text-accent hover:underline">
             Créer un compte

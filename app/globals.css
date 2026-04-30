@@ -3,14 +3,27 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
 body {
   height: 100%;
-  background: #0b0d12;
-  color: #e7eaf2;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: var(--font-open-sans), system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-outfit), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  color: #275250;
 }
 
 input,
@@ -25,23 +38,23 @@ textarea {
     @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition;
   }
   .btn-primary {
-    @apply btn bg-accent text-white hover:opacity-90 disabled:opacity-50;
+    @apply btn bg-accent text-white hover:bg-accentDark disabled:opacity-50;
   }
   .btn-secondary {
-    @apply btn border border-border bg-surface text-white hover:bg-border;
+    @apply btn border border-border bg-white text-fg hover:border-accent hover:text-accent;
   }
   .btn-danger {
     @apply btn bg-danger text-white hover:opacity-90 disabled:opacity-50;
   }
   .input {
-    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-sm
-           outline-none focus:border-accent;
+    @apply w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-fg
+           outline-none focus:border-accent focus:ring-2 focus:ring-accent/20;
   }
   .label {
-    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-white/60;
+    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-fg/60;
   }
   .card {
-    @apply rounded-xl border border-border bg-surface p-4;
+    @apply rounded-xl border border-border bg-white p-4 shadow-sm;
   }
   .pill {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;

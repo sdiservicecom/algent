@@ -91,7 +91,7 @@ export function BetForm({ matchId, playerA, playerB, balance, action }: Props) {
                 className={`flex items-center gap-3 rounded-md border p-3 text-left transition ${
                   active
                     ? 'border-accent bg-accent/10'
-                    : 'border-border bg-bg/40 hover:border-white/30'
+                    : 'border-border bg-fg/5 hover:border-fg/30'
                 }`}
               >
                 <PlayerAvatar player={p} size={40} />
@@ -100,7 +100,7 @@ export function BetForm({ matchId, playerA, playerB, balance, action }: Props) {
                     {p.firstName} {p.lastName}
                   </div>
                   {p.nickname && (
-                    <div className="truncate text-xs text-white/50">
+                    <div className="truncate text-xs text-fg/50">
                       « {p.nickname} »
                     </div>
                   )}
@@ -137,19 +137,19 @@ export function BetForm({ matchId, playerA, playerB, balance, action }: Props) {
         )}
       </div>
 
-      <div className="rounded-md border border-border bg-bg/40 p-3 text-sm">
+      <div className="rounded-md border border-border bg-fg/5 p-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-white/60">Cote</span>
+          <span className="text-fg/60">Cote</span>
           <span className="font-mono">{pick ? fmtOdds(odds) : '—'}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-white/60">Gain potentiel</span>
+          <span className="text-fg/60">Gain potentiel</span>
           <span className="font-medium text-success">
             {pick ? `${fmtPoints(potential)} pts` : '—'}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-white/60">Profit net</span>
+          <span className="text-fg/60">Profit net</span>
           <span className="font-medium">
             {pick ? `${profit >= 0 ? '+' : ''}${fmtPoints(profit)} pts` : '—'}
           </span>

@@ -14,7 +14,7 @@ const UPCOMING_STATUSES: Match['status'][] = [
 ];
 
 const STATUS_PILL: Record<string, string> = {
-  SCHEDULED: 'bg-white/10 text-white/70',
+  SCHEDULED: 'bg-fg/10 text-fg/70',
   OPEN_FOR_BETS: 'bg-success/20 text-success',
   LOCKED: 'bg-yellow-500/20 text-yellow-400',
 };
@@ -42,7 +42,7 @@ export function UpcomingMatchesBanner({ matches, players }: Props) {
   if (upcoming.length === 0) return null;
 
   return (
-    <div className="border-b border-border bg-bg/60">
+    <div className="border-b border-border bg-fg/5">
       <div className="mx-auto flex max-w-6xl items-center gap-3 overflow-x-auto px-4 py-2 text-xs">
         <span className="shrink-0 rounded-full bg-accent/20 px-2 py-0.5 font-semibold uppercase tracking-wide text-accent">
           À venir
@@ -58,15 +58,15 @@ export function UpcomingMatchesBanner({ matches, players }: Props) {
               className="flex shrink-0 items-center gap-2 rounded-md border border-border bg-surface px-2 py-1 transition hover:border-accent"
             >
               <span
-                className={`pill ${STATUS_PILL[m.status] ?? 'bg-white/10 text-white/70'}`}
+                className={`pill ${STATUS_PILL[m.status] ?? 'bg-fg/10 text-fg/70'}`}
               >
                 {STATUS_LABEL[m.status] ?? m.status}
               </span>
               <span className="font-medium">
-                {fmtPlayerName(pa)} <span className="text-white/40">vs</span>{' '}
+                {fmtPlayerName(pa)} <span className="text-fg/40">vs</span>{' '}
                 {fmtPlayerName(pb)}
               </span>
-              <span className="text-white/50">{fmtDateTime(m.startsAt)}</span>
+              <span className="text-fg/50">{fmtDateTime(m.startsAt)}</span>
             </Link>
           );
         })}

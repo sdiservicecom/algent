@@ -5,12 +5,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: '#0b0d12',
-        surface: '#141821',
-        border: '#222836',
-        accent: '#7c5cff',
-        success: '#22c55e',
-        danger: '#ef4444',
+        // Palette claire — Sphère
+        bg: '#ffffff',
+        surface: '#f7f8fa',
+        border: '#e3e6eb',
+        accent: '#3ea663',
+        accentDark: '#275250',
+        fg: '#0f172a',
+        success: '#3ea663',
+        danger: '#dc2626',
+      },
+      fontFamily: {
+        sans: ['var(--font-open-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-outfit)', 'system-ui', 'sans-serif'],
       },
     },
   },

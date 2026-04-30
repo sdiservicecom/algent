@@ -91,13 +91,13 @@ export default async function AdminMatchDetailPage({
   return (
     <div className="space-y-6">
       <header className="card">
-        <div className="text-xs uppercase text-white/50">
+        <div className="text-xs uppercase text-fg/50">
           {fmtDateTime(match.startsAt)} · {match.status}
         </div>
         <h1 className="mt-2 text-xl font-bold">
           {fmtPlayerName(pa)} vs {fmtPlayerName(pb)}
         </h1>
-        <div className="mt-2 text-sm text-white/60">
+        <div className="mt-2 text-sm text-fg/60">
           Cotes : {fmtOdds(match.oddsA)} / {fmtOdds(match.oddsB)} · Mises :{' '}
           {fmtPoints(match.totalStakeA)} / {fmtPoints(match.totalStakeB)}
         </div>
@@ -163,7 +163,7 @@ export default async function AdminMatchDetailPage({
         <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
+              <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                 <th className="px-3 py-2">Joueur</th>
                 <th className="px-3 py-2">Pari sur</th>
                 <th className="px-3 py-2">Cote</th>

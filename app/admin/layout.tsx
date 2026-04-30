@@ -16,37 +16,43 @@ export default async function AdminLayout({
   const session = await requireAdmin();
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-surface/60">
+      <header className="bg-accentDark text-white">
         <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-3 py-3 sm:gap-6 sm:px-4">
-          <Link href="/admin" className="text-lg font-bold text-accent">
+          <Link
+            href="/admin"
+            className="font-display text-xl font-semibold tracking-tight text-white"
+          >
             Algent · Admin
           </Link>
           <div className="order-3 -mx-3 flex w-full items-center gap-3 overflow-x-auto px-3 text-sm sm:order-2 sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0">
-            <Link href="/admin" className="shrink-0 hover:text-accent">
+            <Link href="/admin" className="shrink-0 text-white/80 hover:text-white">
               Vue d'ensemble
             </Link>
-            <Link href="/admin/players" className="shrink-0 hover:text-accent">
+            <Link href="/admin/players" className="shrink-0 text-white/80 hover:text-white">
               Joueurs
             </Link>
-            <Link href="/admin/matches" className="shrink-0 hover:text-accent">
+            <Link href="/admin/matches" className="shrink-0 text-white/80 hover:text-white">
               Matchs
             </Link>
             <Link
               href="/admin/tournament"
-              className="shrink-0 hover:text-accent"
+              className="shrink-0 text-white/80 hover:text-white"
             >
               Tournoi
             </Link>
-            <Link href="/dashboard" className="shrink-0 hover:text-accent">
+            <Link href="/dashboard" className="shrink-0 text-white/80 hover:text-white">
               ← Retour app
             </Link>
           </div>
           <div className="order-2 ml-auto flex items-center gap-2 text-sm sm:order-3 sm:gap-3">
-            <span className="hidden text-white/60 sm:inline">
+            <span className="hidden text-white/70 sm:inline">
               {session.username}
             </span>
             <form action={logout}>
-              <button className="btn-secondary text-xs sm:text-sm" type="submit">
+              <button
+                type="submit"
+                className="rounded-md border border-white/30 px-2 py-1 text-xs text-white hover:bg-white hover:text-accentDark sm:px-3 sm:text-sm"
+              >
                 <span className="sm:hidden">Sortir</span>
                 <span className="hidden sm:inline">Déconnexion</span>
               </button>

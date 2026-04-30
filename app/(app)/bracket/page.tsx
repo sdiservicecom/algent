@@ -47,7 +47,7 @@ export default async function BracketPage() {
     return (
       <div>
         <h1 className="mb-4 text-2xl font-bold">Bracket</h1>
-        <div className="card text-sm text-white/60">
+        <div className="card text-sm text-fg/60">
           Aucun match n'est encore associé à une phase. L'admin doit créer des
           matchs avec une phase (huitième, quart, demi, finale) depuis{' '}
           <Link href="/admin/matches" className="text-accent hover:underline">
@@ -118,7 +118,7 @@ function RoundColumn({
 }) {
   return (
     <div className="flex w-[240px] flex-col">
-      <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-white/60">
+      <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-fg/60">
         {MATCH_ROUND_LABEL[round]}
       </div>
       <div className="flex flex-1 flex-col justify-around gap-3">
@@ -151,7 +151,7 @@ function BracketMatch({
   return (
     <Link
       href={`/matches/${match.id}`}
-      className="block overflow-hidden rounded-md border border-border bg-surface text-xs transition hover:border-white/40"
+      className="block overflow-hidden rounded-md border border-border bg-surface text-xs transition hover:border-fg/40"
     >
       <BracketRow
         player={pa}
@@ -188,20 +188,20 @@ function BracketRow({
           ? 'bg-success/15'
           : isLoser
             ? 'opacity-50'
-            : 'bg-bg/30'
+            : 'bg-fg/5'
       }`}
     >
       {player ? (
         <PlayerAvatar player={player} size={24} />
       ) : (
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-bg/60 text-[10px] text-white/40">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-fg/5 text-[10px] text-fg/40">
           ?
         </span>
       )}
       <div className="min-w-0 flex-1">
         <div
           className={`truncate ${
-            isWinner ? 'font-semibold text-success' : 'text-white/80'
+            isWinner ? 'font-semibold text-success' : 'text-fg/80'
           } ${isLoser ? 'line-through' : ''}`}
         >
           {player ? `${player.firstName} ${player.lastName}` : '???'}

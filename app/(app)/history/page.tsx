@@ -40,12 +40,12 @@ export default async function HistoryPage() {
       <section>
         <h1 className="mb-4 text-2xl font-bold">Mes paris</h1>
         {bets.length === 0 ? (
-          <div className="card text-sm text-white/60">Aucun pari.</div>
+          <div className="card text-sm text-fg/60">Aucun pari.</div>
         ) : (
           <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
+                <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Match</th>
                   <th className="px-3 py-2">Pari sur</th>
@@ -63,7 +63,7 @@ export default async function HistoryPage() {
                   const picked = players[b.pickedPlayerId];
                   return (
                     <tr key={b.id} className="border-b border-border/50">
-                      <td className="px-3 py-2 text-white/60">
+                      <td className="px-3 py-2 text-fg/60">
                         {fmtDateTime(b.placedAt)}
                       </td>
                       <td className="px-3 py-2">
@@ -88,7 +88,7 @@ export default async function HistoryPage() {
                             -{fmtPoints(b.stake)}
                           </span>
                         ) : (
-                          <span className="text-white/50">—</span>
+                          <span className="text-fg/50">—</span>
                         )}
                       </td>
                       <td className="px-3 py-2">
@@ -122,7 +122,7 @@ export default async function HistoryPage() {
                     </div>
                     <ComboStatusPill status={c.status} />
                   </div>
-                  <div className="mt-2 text-xs text-white/50">
+                  <div className="mt-2 text-xs text-fg/50">
                     {fmtDateTime(c.placedAt)}
                   </div>
                   <ul className="mt-3 space-y-1 text-sm">
@@ -138,13 +138,13 @@ export default async function HistoryPage() {
                             ? 'text-danger line-through'
                             : leg.status === 'CANCELLED'
                               ? 'text-yellow-400'
-                              : 'text-white/80';
+                              : 'text-fg/80';
                       return (
                         <li
                           key={i}
                           className={`flex items-center gap-2 ${tone}`}
                         >
-                          <span className="text-xs text-white/40">
+                          <span className="text-xs text-fg/40">
                             {legStatusIcon(leg.status)}
                           </span>
                           <span className="truncate">
@@ -152,7 +152,7 @@ export default async function HistoryPage() {
                               ? `${picked.firstName} ${picked.lastName}`
                               : '—'}
                           </span>
-                          <span className="text-xs text-white/50">
+                          <span className="text-xs text-fg/50">
                             ({pa?.firstName} vs {pb?.firstName})
                           </span>
                           <span className="ml-auto font-mono text-xs">
@@ -163,7 +163,7 @@ export default async function HistoryPage() {
                     })}
                   </ul>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-sm">
-                    <span className="text-white/60">
+                    <span className="text-fg/60">
                       Mise{' '}
                       <span className="font-medium">
                         {fmtPoints(c.stake)}
@@ -174,7 +174,7 @@ export default async function HistoryPage() {
                       </span>
                     </span>
                     {c.status === 'PENDING' ? (
-                      <span className="text-xs text-white/50">
+                      <span className="text-xs text-fg/50">
                         {winningLegs}/{c.legs.length} OK
                       </span>
                     ) : c.status === 'WON' ? (
@@ -203,7 +203,7 @@ export default async function HistoryPage() {
         <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
+              <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                 <th className="px-3 py-2">Date</th>
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2">Montant</th>
@@ -213,7 +213,7 @@ export default async function HistoryPage() {
             <tbody>
               {txs.map((t) => (
                 <tr key={t.id} className="border-b border-border/50">
-                  <td className="px-3 py-2 text-white/60">
+                  <td className="px-3 py-2 text-fg/60">
                     {fmtDateTime(t.createdAt)}
                   </td>
                   <td className="px-3 py-2">{t.type}</td>
@@ -223,7 +223,7 @@ export default async function HistoryPage() {
                         ? 'text-success'
                         : t.amount < 0
                           ? 'text-danger'
-                          : 'text-white/50'
+                          : 'text-fg/50'
                     }`}
                   >
                     {t.amount > 0 ? '+' : ''}
@@ -244,7 +244,7 @@ export default async function HistoryPage() {
 
 function ComboStatusPill({ status }: { status: BetStatus }) {
   const map: Record<BetStatus, { label: string; className: string }> = {
-    PENDING: { label: 'En cours', className: 'bg-white/10 text-white/70' },
+    PENDING: { label: 'En cours', className: 'bg-fg/10 text-fg/70' },
     WON: { label: 'Gagné', className: 'bg-success/20 text-success' },
     LOST: { label: 'Perdu', className: 'bg-danger/20 text-danger' },
     CANCELLED: {
@@ -271,7 +271,7 @@ function legStatusIcon(s: BetStatus) {
 
 function StatusPill({ status }: { status: BetStatus }) {
   const map: Record<BetStatus, { label: string; className: string }> = {
-    PENDING: { label: 'En cours', className: 'bg-white/10 text-white/70' },
+    PENDING: { label: 'En cours', className: 'bg-fg/10 text-fg/70' },
     WON: { label: 'Gagné', className: 'bg-success/20 text-success' },
     LOST: { label: 'Perdu', className: 'bg-danger/20 text-danger' },
     CANCELLED: {

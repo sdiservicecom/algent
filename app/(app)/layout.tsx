@@ -29,49 +29,55 @@ export default async function AppLayout({
   return (
     <BasketProvider>
       <div className="min-h-screen pb-24">
-        <header className="border-b border-border bg-surface/60 backdrop-blur">
+        <header className="bg-accentDark text-white">
           <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-3 py-3 sm:gap-6 sm:px-4">
-            <Link href="/dashboard" className="text-lg font-bold text-accent">
+            <Link
+              href="/dashboard"
+              className="font-display text-xl font-semibold tracking-tight text-white"
+            >
               Algent
             </Link>
             <div className="order-3 -mx-3 flex w-full items-center gap-3 overflow-x-auto px-3 text-sm sm:order-2 sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0">
-              <Link href="/dashboard" className="shrink-0 hover:text-accent">
+              <Link href="/dashboard" className="shrink-0 text-white/80 hover:text-white">
                 Dashboard
               </Link>
-              <Link href="/matches" className="shrink-0 hover:text-accent">
+              <Link href="/matches" className="shrink-0 text-white/80 hover:text-white">
                 Matchs
               </Link>
-              <Link href="/bracket" className="shrink-0 hover:text-accent">
+              <Link href="/bracket" className="shrink-0 text-white/80 hover:text-white">
                 Bracket
               </Link>
-              <Link href="/history" className="shrink-0 hover:text-accent">
+              <Link href="/history" className="shrink-0 text-white/80 hover:text-white">
                 Historique
               </Link>
-              <Link href="/leaderboard" className="shrink-0 hover:text-accent">
+              <Link href="/leaderboard" className="shrink-0 text-white/80 hover:text-white">
                 Classement
               </Link>
-              <Link href="/tournament" className="shrink-0 hover:text-accent">
+              <Link href="/tournament" className="shrink-0 text-white/80 hover:text-white">
                 Tournoi
               </Link>
               {user.role === 'ADMIN' && (
                 <Link
                   href="/admin"
-                  className="shrink-0 text-accent hover:underline"
+                  className="shrink-0 rounded bg-accent px-2 py-0.5 text-white hover:bg-white hover:text-accentDark"
                 >
                   Admin
                 </Link>
               )}
             </div>
             <div className="order-2 ml-auto flex items-center gap-2 text-sm sm:order-3 sm:gap-3">
-              <span className="pill bg-accent/20 text-accent">
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-medium text-white">
                 {fmtPoints(user.balance)} pts
               </span>
-              <span className="hidden text-white/60 sm:inline">
+              <span className="hidden text-white/70 sm:inline">
                 {user.username}
               </span>
               <NotificationBell />
               <form action={logout}>
-                <button className="btn-secondary text-xs sm:text-sm" type="submit">
+                <button
+                  type="submit"
+                  className="rounded-md border border-white/30 px-2 py-1 text-xs text-white hover:bg-white hover:text-accentDark sm:px-3 sm:text-sm"
+                >
                   <span className="sm:hidden">Sortir</span>
                   <span className="hidden sm:inline">Déconnexion</span>
                 </button>

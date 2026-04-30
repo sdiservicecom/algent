@@ -34,7 +34,7 @@ export default async function AdminHome() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         {cards.map((c) => (
           <div key={c.label} className="card">
-            <div className="text-xs uppercase text-white/50">{c.label}</div>
+            <div className="text-xs uppercase text-fg/50">{c.label}</div>
             <div className="mt-2 text-2xl font-bold">{c.value}</div>
           </div>
         ))}

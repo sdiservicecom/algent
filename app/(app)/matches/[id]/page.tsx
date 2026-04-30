@@ -76,7 +76,7 @@ export default async function MatchDetailPage({
   return (
     <div className="space-y-6">
       <header className="card">
-        <div className="text-xs uppercase text-white/50">
+        <div className="text-xs uppercase text-fg/50">
           {fmtDateTime(match.startsAt)}
         </div>
         <div className="mt-2 grid grid-cols-1 items-stretch gap-3 sm:grid-cols-[1fr_auto_1fr]">
@@ -95,17 +95,17 @@ export default async function MatchDetailPage({
                 {pa.firstName} {pa.lastName}
               </div>
               {pa.nickname && (
-                <div className="truncate text-sm text-white/60">
+                <div className="truncate text-sm text-fg/60">
                   « {pa.nickname} »
                 </div>
               )}
-              <div className="text-xs text-white/50">Seed #{pa.seed}</div>
+              <div className="text-xs text-fg/50">Seed #{pa.seed}</div>
               <div
                 className={`mt-1 text-2xl font-bold ${
                   aIsWinner
                     ? 'text-success'
                     : settled
-                      ? 'text-white/40 line-through'
+                      ? 'text-fg/40 line-through'
                       : 'text-accent'
                 }`}
               >
@@ -118,7 +118,7 @@ export default async function MatchDetailPage({
               )}
             </div>
           </div>
-          <div className="self-center text-center text-white/40">vs</div>
+          <div className="self-center text-center text-fg/40">vs</div>
           <div
             className={`flex min-w-0 items-center gap-3 rounded-lg p-3 transition sm:flex-row-reverse sm:text-right ${
               bIsWinner
@@ -134,17 +134,17 @@ export default async function MatchDetailPage({
                 {pb.firstName} {pb.lastName}
               </div>
               {pb.nickname && (
-                <div className="truncate text-sm text-white/60">
+                <div className="truncate text-sm text-fg/60">
                   « {pb.nickname} »
                 </div>
               )}
-              <div className="text-xs text-white/50">Seed #{pb.seed}</div>
+              <div className="text-xs text-fg/50">Seed #{pb.seed}</div>
               <div
                 className={`mt-1 text-2xl font-bold ${
                   bIsWinner
                     ? 'text-success'
                     : settled
-                      ? 'text-white/40 line-through'
+                      ? 'text-fg/40 line-through'
                       : 'text-accent'
                 }`}
               >
@@ -161,7 +161,7 @@ export default async function MatchDetailPage({
 
         {total > 0 && (
           <div className="mt-4">
-            <div className="mb-1 flex justify-between text-xs text-white/60">
+            <div className="mb-1 flex justify-between text-xs text-fg/60">
               <span>{fmtPoints(match.totalStakeA)} pts misés</span>
               <span>{fmtPoints(match.totalStakeB)} pts misés</span>
             </div>
@@ -224,7 +224,7 @@ export default async function MatchDetailPage({
           action={placeBetAction}
         />
       ) : settled ? null : (
-        <div className="card text-sm text-white/60">
+        <div className="card text-sm text-fg/60">
           {tooLate
             ? 'Les paris sont fermés (moins de 2 minutes avant le début).'
             : 'Les paris ne sont pas ouverts pour ce match.'}
@@ -237,7 +237,7 @@ export default async function MatchDetailPage({
           <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
+                <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Cote A</th>
                   <th className="px-3 py-2">Cote B</th>
@@ -249,14 +249,14 @@ export default async function MatchDetailPage({
               <tbody>
                 {snapshots.map((s, i) => (
                   <tr key={i} className="border-b border-border/50">
-                    <td className="px-3 py-2 text-white/60">
+                    <td className="px-3 py-2 text-fg/60">
                       {fmtDateTime(s.createdAt)}
                     </td>
                     <td className="px-3 py-2 font-mono">{fmtOdds(s.oddsA)}</td>
                     <td className="px-3 py-2 font-mono">{fmtOdds(s.oddsB)}</td>
                     <td className="px-3 py-2">{fmtPoints(s.totalStakeA)}</td>
                     <td className="px-3 py-2">{fmtPoints(s.totalStakeB)}</td>
-                    <td className="px-3 py-2 text-xs text-white/50">
+                    <td className="px-3 py-2 text-xs text-fg/50">
                       {s.reason}
                     </td>
                   </tr>

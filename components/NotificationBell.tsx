@@ -16,7 +16,7 @@ const KIND_PILL: Record<AppNotification['kind'], string> = {
   BET_LOST: 'bg-danger/20 text-danger',
   TOURNAMENT_WON: 'bg-success/20 text-success',
   TOURNAMENT_LOST: 'bg-danger/20 text-danger',
-  INFO: 'bg-white/10 text-white/70',
+  INFO: 'bg-fg/10 text-fg/70',
 };
 
 const KIND_ICON: Record<AppNotification['kind'], string> = {
@@ -111,7 +111,7 @@ export function NotificationBell() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Notifications"
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-base hover:border-white/30"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-base hover:border-fg/30"
       >
         🔔
         {unread > 0 && (
@@ -136,7 +136,7 @@ export function NotificationBell() {
           </div>
           <div className="max-h-[60vh] overflow-y-auto">
             {items.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-white/50">
+              <div className="px-4 py-6 text-center text-sm text-fg/50">
                 Aucune notification.
               </div>
             ) : (
@@ -151,7 +151,7 @@ export function NotificationBell() {
                     <button
                       type="button"
                       onClick={() => onClickItem(n)}
-                      className="flex w-full gap-3 px-3 py-2 text-left transition hover:bg-bg/40"
+                      className="flex w-full gap-3 px-3 py-2 text-left transition hover:bg-fg/5"
                     >
                       <span
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${KIND_PILL[n.kind]}`}
@@ -167,10 +167,10 @@ export function NotificationBell() {
                             <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-accent" />
                           )}
                         </div>
-                        <div className="line-clamp-2 text-xs text-white/70">
+                        <div className="line-clamp-2 text-xs text-fg/70">
                           {n.body}
                         </div>
-                        <div className="mt-0.5 text-[11px] text-white/40">
+                        <div className="mt-0.5 text-[11px] text-fg/40">
                           {relativeTime(n.createdAt)}
                         </div>
                       </div>

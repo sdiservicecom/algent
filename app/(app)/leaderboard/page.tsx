@@ -11,7 +11,7 @@ export default async function LeaderboardPage() {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Classement</h1>
-        <span className="text-xs text-white/50">
+        <span className="text-xs text-fg/50">
           Mise à jour automatique toutes les 10 s
         </span>
       </div>
@@ -19,7 +19,7 @@ export default async function LeaderboardPage() {
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
+            <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">Joueur</th>
               <th className="px-3 py-2 text-right">Solde</th>

@@ -116,7 +116,7 @@ export default async function RegisterPage({
             <div className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm">
               <p className="text-danger">{errorMessage(sp.error)}</p>
               {sp.detail && (
-                <p className="mt-1 break-words font-mono text-xs text-white/60">
+                <p className="mt-1 break-words font-mono text-xs text-fg/60">
                   {sp.detail}
                 </p>
               )}
@@ -126,7 +126,7 @@ export default async function RegisterPage({
             Créer mon compte
           </button>
         </form>
-        <p className="mt-6 text-center text-sm text-white/60">
+        <p className="mt-6 text-center text-sm text-fg/60">
           Déjà un compte ?{' '}
           <Link href="/login" className="text-accent hover:underline">
             Se connecter

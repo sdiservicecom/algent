@@ -15,7 +15,7 @@ export default async function MatchesPage() {
     <div>
       <h1 className="mb-4 text-2xl font-bold">Matchs</h1>
       {matches.length === 0 ? (
-        <div className="card text-sm text-white/60">
+        <div className="card text-sm text-fg/60">
           Aucun match programmé pour l'instant.
         </div>
       ) : (

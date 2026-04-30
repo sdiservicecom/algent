@@ -31,7 +31,7 @@ export function PlayerAvatar({ player, size = 40, className = '' }: Props) {
   }
   return (
     <span
-      className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-bg/60 font-semibold text-white/70 ${className}`}
+      className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-fg/5 font-semibold text-fg/70 ${className}`}
       aria-hidden
     >
       {initials || '?'}

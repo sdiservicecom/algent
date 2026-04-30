@@ -98,7 +98,7 @@ export default async function AdminPlayerEditPage({
         <PlayerAvatar player={player} size={72} />
         <div>
           <div className="text-lg font-semibold">{fmtPlayerName(player)}</div>
-          <div className="text-sm text-white/60">
+          <div className="text-sm text-fg/60">
             Seed actuel : #{player.seed}
           </div>
         </div>
@@ -169,7 +169,7 @@ export default async function AdminPlayerEditPage({
           />
         </div>
         {player.photoUrl && (
-          <label className="md:col-span-6 inline-flex items-center gap-2 text-sm text-white/70">
+          <label className="md:col-span-6 inline-flex items-center gap-2 text-sm text-fg/70">
             <input
               type="checkbox"
               name="removePhoto"

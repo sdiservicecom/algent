@@ -130,21 +130,21 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
             <h3 className="font-semibold">Mes paris ({items.length})</h3>
             <button
               onClick={() => setOpen(false)}
-              className="text-sm text-white/60 hover:text-white"
+              className="text-sm text-fg/60 hover:text-accent"
               aria-label="Fermer le panier"
             >
               ✕
             </button>
           </div>
 
-          <div className="flex rounded-md border border-border bg-bg/40 p-1 text-xs">
+          <div className="flex rounded-md border border-border bg-fg/5 p-1 text-xs">
             <button
               type="button"
               onClick={() => setMode('individual')}
               className={`flex-1 rounded px-2 py-1 transition ${
                 mode === 'individual'
                   ? 'bg-accent text-white'
-                  : 'text-white/60 hover:text-white'
+                  : 'text-fg/60 hover:text-accent'
               }`}
             >
               Individuels
@@ -155,7 +155,7 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
               className={`flex-1 rounded px-2 py-1 transition ${
                 mode === 'combo'
                   ? 'bg-accent text-white'
-                  : 'text-white/60 hover:text-white'
+                  : 'text-fg/60 hover:text-accent'
               }`}
             >
               Combiné × {combinedOdds.toFixed(2)}
@@ -166,9 +166,9 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
             {items.map((i) => (
               <li
                 key={i.matchId}
-                className="rounded-md border border-border bg-bg/40 p-2"
+                className="rounded-md border border-border bg-fg/5 p-2"
               >
-                <div className="truncate text-xs text-white/60">
+                <div className="truncate text-xs text-fg/60">
                   {i.matchLabel}
                 </div>
                 <div className="truncate font-medium">
@@ -236,11 +236,11 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
           {mode === 'individual' ? (
             <div className="space-y-1 border-t border-border pt-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-white/60">Total misé</span>
+                <span className="text-fg/60">Total misé</span>
                 <span className="font-semibold">{fmtPoints(total)} pts</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/60">Gain potentiel total</span>
+                <span className="text-fg/60">Gain potentiel total</span>
                 <span className="font-semibold text-success">
                   {fmtPoints(totalGain)} pts
                 </span>
@@ -263,7 +263,7 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
           ) : (
             <div className="space-y-2 border-t border-border pt-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-white/60">Cote combinée</span>
+                <span className="text-fg/60">Cote combinée</span>
                 <span className="font-mono text-lg font-bold text-accent">
                   × {combinedOdds.toFixed(2)}
                 </span>
@@ -286,7 +286,7 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
                 />
               </div>
               <div className="flex justify-between">
-                <span className="text-white/60">Gain potentiel</span>
+                <span className="text-fg/60">Gain potentiel</span>
                 <span className="font-semibold text-success">
                   {fmtPoints(comboPotential)} pts
                 </span>

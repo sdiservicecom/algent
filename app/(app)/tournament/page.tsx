@@ -125,11 +125,11 @@ export default async function TournamentPage({
                     {p.firstName} {p.lastName}
                   </div>
                   {p.nickname && (
-                    <div className="truncate text-xs text-white/60">
+                    <div className="truncate text-xs text-fg/60">
                       « {p.nickname} »
                     </div>
                   )}
-                  <div className="text-xs text-white/50">Seed #{p.seed}</div>
+                  <div className="text-xs text-fg/50">Seed #{p.seed}</div>
                 </div>
               </div>
               <div className="text-xl font-bold text-accent">
@@ -205,7 +205,7 @@ function statusPillClass(s: string) {
     case 'CANCELLED':
       return 'pill bg-danger/20 text-danger';
     default:
-      return 'pill bg-white/10 text-white/70';
+      return 'pill bg-fg/10 text-fg/70';
   }
 }
 function errorLabel(code: string) {

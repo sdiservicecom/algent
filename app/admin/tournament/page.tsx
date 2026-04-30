@@ -70,7 +70,7 @@ export default async function AdminTournamentPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Tournoi (pari sur vainqueur)</h1>
-        <span className="pill bg-white/10 text-white/70">
+        <span className="pill bg-fg/10 text-fg/70">
           {tournament.status}
         </span>
       </div>
@@ -167,7 +167,7 @@ export default async function AdminTournamentPage({
         <div className="card overflow-x-auto p-0">
           <table className="w-full min-w-[600px] text-sm">
             <thead>
-              <tr className="border-b border-border bg-bg/30 text-left text-xs uppercase text-white/50">
+              <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
                 <th className="px-3 py-2">Joueur (user)</th>
                 <th className="px-3 py-2">Pari sur</th>
                 <th className="px-3 py-2">Cote</th>
