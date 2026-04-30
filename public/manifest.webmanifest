@@ -1,0 +1,24 @@
+{
+  "name": "Algent — Tournoi virtuel",
+  "short_name": "Algent",
+  "description": "Application interne de paris virtuels pour le tournoi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#275250",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
+    }
+  ]
+}

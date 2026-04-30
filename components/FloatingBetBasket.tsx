@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useBasket } from './BasketContext';
 import { fmtPoints } from '@/lib/format';
 
+const newIdempotencyKey = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 type Mode = 'individual' | 'combo';
 
 const ERROR_LABEL: Record<string, string> = {
@@ -61,7 +65,10 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
     try {
       const res = await fetch('/api/bets/batch', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': newIdempotencyKey(),
+        },
         body: JSON.stringify({
           items: items.map((i) => ({
             matchId: i.matchId,
@@ -96,7 +103,10 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
     try {
       const res = await fetch('/api/bets/combo', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': newIdempotencyKey(),
+        },
         body: JSON.stringify({
           stake: Math.floor(comboStake),
           items: items.map((i) => ({

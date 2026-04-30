@@ -18,6 +18,17 @@ const openSans = Open_Sans({
 export const metadata: Metadata = {
   title: 'Algent — Tournoi virtuel',
   description: 'Application interne de paris virtuels',
+  manifest: '/manifest.webmanifest',
+  themeColor: '#275250',
+  appleWebApp: {
+    capable: true,
+    title: 'Algent',
+    statusBarStyle: 'black-translucent',
+  },
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

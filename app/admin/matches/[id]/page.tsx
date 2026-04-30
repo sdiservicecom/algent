@@ -6,32 +6,46 @@ import {
   getMatch,
   settleMatch,
   transitionMatchStatus,
+  updateMatch,
 } from '@/lib/matches';
 import { listMatchBets } from '@/lib/bets';
-import { getPlayer } from '@/lib/players';
+import { getPlayer, listPlayers } from '@/lib/players';
 import { getUser } from '@/lib/users';
+import { logAudit } from '@/lib/audit';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 
 async function open(formData: FormData) {
   'use server';
-  await requireAdmin();
+  const session = await requireAdmin();
   const id = String(formData.get('id'));
   await transitionMatchStatus(id, 'OPEN_FOR_BETS');
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_OPEN',
+    targetId: id,
+  });
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
 }
 
 async function lock(formData: FormData) {
   'use server';
-  await requireAdmin();
+  const session = await requireAdmin();
   const id = String(formData.get('id'));
   await transitionMatchStatus(id, 'LOCKED');
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_LOCK',
+    targetId: id,
+  });
   revalidatePath(`/admin/matches/${id}`);
 }
 
 async function settle(formData: FormData) {
   'use server';
-  await requireAdmin();
+  const session = await requireAdmin();
   const id = String(formData.get('id'));
   const winnerId = String(formData.get('winnerId'));
   const match = await getMatch(id);
@@ -49,6 +63,13 @@ async function settle(formData: FormData) {
     await transitionMatchStatus(id, 'FINISHED');
   }
   await settleMatch(id, winnerId);
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_SETTLE',
+    targetId: id,
+    metadata: { winnerId },
+  });
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
   revalidatePath('/leaderboard');
@@ -56,30 +77,67 @@ async function settle(formData: FormData) {
 
 async function cancel(formData: FormData) {
   'use server';
-  await requireAdmin();
+  const session = await requireAdmin();
   const id = String(formData.get('id'));
   await cancelMatch(id);
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_CANCEL',
+    targetId: id,
+  });
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
 }
 
+async function updateBasic(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  const startsAtRaw = String(formData.get('startsAt') ?? '');
+  const playerAId = String(formData.get('playerAId') ?? '') || undefined;
+  const playerBId = String(formData.get('playerBId') ?? '') || undefined;
+  const startsAt = startsAtRaw ? new Date(startsAtRaw) : undefined;
+  if (startsAt && Number.isNaN(startsAt.getTime())) {
+    return redirect(`/admin/matches/${id}?error=date`);
+  }
+  await updateMatch(id, { startsAt, playerAId, playerBId });
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_UPDATE',
+    targetId: id,
+    metadata: { startsAt: startsAtRaw, playerAId, playerBId },
+  });
+  revalidatePath(`/admin/matches/${id}`);
+  revalidatePath('/matches');
+  revalidatePath('/bracket');
+  redirect(`/admin/matches/${id}?ok=1`);
+}
+
 export default async function AdminMatchDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ ok?: string; error?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
+  const sp = await searchParams;
   const match = await getMatch(id);
   if (!match) notFound();
 
-  const [bets, pa, pb, winner] = await Promise.all([
+  const [bets, pa, pb, winner, allPlayers] = await Promise.all([
     listMatchBets(id),
     getPlayer(match.playerAId),
     getPlayer(match.playerBId),
     match.winnerId ? getPlayer(match.winnerId) : Promise.resolve(null),
+    listPlayers(),
   ]);
   if (!pa || !pb) notFound();
+  const isEditable = match.status === 'SCHEDULED';
+  const startsLocal = new Date(match.startsAt).toISOString().slice(0, 16);
 
   const userIds = Array.from(new Set(bets.map((b) => b.userId)));
   const users = Object.fromEntries(
@@ -137,6 +195,64 @@ export default async function AdminMatchDetailPage({
           </form>
         )}
       </section>
+
+      {sp.ok && (
+        <div className="card border-success/40 text-success">
+          ✓ Match mis à jour.
+        </div>
+      )}
+      {sp.error === 'date' && (
+        <div className="card border-danger/40 text-danger">
+          Date invalide.
+        </div>
+      )}
+
+      {isEditable && (
+        <section className="card">
+          <h2 className="mb-3 text-lg font-semibold">Modifier le match</h2>
+          <p className="mb-3 text-xs text-fg/60">
+            Possible uniquement tant que le match est SCHEDULED (avant
+            l'ouverture des paris).
+          </p>
+          <form action={updateBasic} className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input type="hidden" name="id" value={match.id} />
+            <div>
+              <label className="label">Joueur A</label>
+              <select name="playerAId" defaultValue={match.playerAId} className="input">
+                {allPlayers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    #{p.seed} · {fmtPlayerName(p)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Joueur B</label>
+              <select name="playerBId" defaultValue={match.playerBId} className="input">
+                {allPlayers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    #{p.seed} · {fmtPlayerName(p)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Date & heure</label>
+              <input
+                name="startsAt"
+                type="datetime-local"
+                defaultValue={startsLocal}
+                className="input"
+              />
+            </div>
+            <div className="md:col-span-3 flex justify-end">
+              <button className="btn-primary md:w-auto" type="submit">
+                Enregistrer
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
 
       {match.status !== 'SETTLED' && match.status !== 'CANCELLED' && (
         <section className="card">

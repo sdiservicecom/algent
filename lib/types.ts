@@ -160,3 +160,32 @@ export interface AppNotification {
   read: boolean;
   createdAt: string;
 }
+
+export type AuditAction =
+  | 'MATCH_OPEN'
+  | 'MATCH_LOCK'
+  | 'MATCH_SETTLE'
+  | 'MATCH_CANCEL'
+  | 'MATCH_CREATE'
+  | 'MATCH_UPDATE'
+  | 'PLAYER_CREATE'
+  | 'PLAYER_UPDATE'
+  | 'PLAYER_DELETE'
+  | 'TOURNAMENT_OPEN'
+  | 'TOURNAMENT_LOCK'
+  | 'TOURNAMENT_CANCEL'
+  | 'TOURNAMENT_SETTLE'
+  | 'USER_PROMOTE'
+  | 'USER_DEMOTE'
+  | 'USER_ADJUST_BALANCE';
+
+export interface AuditEntry {
+  id: string;
+  adminId: string;
+  adminUsername: string;
+  action: AuditAction;
+  targetId: string | null;
+  targetLabel: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}

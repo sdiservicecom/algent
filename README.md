@@ -8,6 +8,8 @@ Aucun argent réel.
 - **Next.js 15** (App Router) + React 19 + TypeScript + Tailwind
 - **Upstash Redis** (via l'intégration Vercel Marketplace) pour tout le stockage — pas de schéma, pas de migrations
 - **Vercel Blob** (optionnel) pour héberger les photos des joueurs uploadées depuis l'admin
+- **Vitest** pour les tests unitaires (`npm test`)
+- **Rate limiting** via `@upstash/ratelimit` sur login / register / placement de paris
 - **bcryptjs** + **jose** (JWT en cookie httpOnly)
 - Déploiement **Vercel** (cron job inclus)
 

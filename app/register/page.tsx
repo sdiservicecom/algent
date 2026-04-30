@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import bcrypt from 'bcryptjs';
 import { getSession, setSessionCookie, signSession } from '@/lib/auth';
 import { UserError, createUser } from '@/lib/users';
+import { checkLimit, limits } from '@/lib/ratelimit';
 
 async function register(formData: FormData) {
   'use server';
@@ -15,6 +17,10 @@ async function register(formData: FormData) {
   if (lastName.length < 1) return redirect('/register?error=lastName');
   if (username.length < 3) return redirect('/register?error=username');
   if (password.length < 6) return redirect('/register?error=password');
+
+  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anon';
+  const rl = await checkLimit(limits.register, ip);
+  if (!rl.ok) return redirect('/register?error=ratelimit');
 
   let user;
   try {
@@ -149,6 +155,8 @@ function errorMessage(code: string): string {
       return 'Le mot de passe doit faire 6 caractères minimum.';
     case 'taken':
       return 'Ce pseudonyme est déjà pris.';
+    case 'ratelimit':
+      return 'Trop de créations de compte — réessaie dans 10 minutes.';
     case 'server':
       return 'Erreur serveur — vérifie que Vercel KV est bien connecté au projet (variables KV_*).';
     case 'session':

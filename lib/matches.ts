@@ -294,6 +294,60 @@ export async function cancelMatch(matchId: string): Promise<void> {
   await resolveCombosForMatch(matchId, null, true);
 }
 
+export async function updateMatch(
+  matchId: string,
+  input: {
+    playerAId?: string;
+    playerBId?: string;
+    startsAt?: Date;
+  },
+): Promise<void> {
+  const match = await getMatch(matchId);
+  if (!match) throw new MatchError('MATCH_NOT_FOUND');
+  if (match.status !== 'SCHEDULED') {
+    // Modification interdite après ouverture aux paris : il y a peut-être déjà
+    // des mises avec des cotes figées sur la base des seeds initiaux.
+    throw new MatchError('INVALID_TRANSITION');
+  }
+
+  const updates: Record<string, string | number> = {};
+  let recompute = false;
+
+  if (input.startsAt) {
+    updates.startsAt = input.startsAt.toISOString();
+    await kv.zadd(K.matchesByTime(), {
+      score: input.startsAt.getTime(),
+      member: matchId,
+    });
+  }
+  if (input.playerAId && input.playerAId !== match.playerAId) {
+    updates.playerAId = input.playerAId;
+    recompute = true;
+  }
+  if (input.playerBId && input.playerBId !== match.playerBId) {
+    updates.playerBId = input.playerBId;
+    recompute = true;
+  }
+
+  if (recompute) {
+    const newAId = (updates.playerAId as string) ?? match.playerAId;
+    const newBId = (updates.playerBId as string) ?? match.playerBId;
+    if (newAId === newBId) throw new MatchError('INVALID_WINNER');
+    const [pa, pb] = await Promise.all([
+      getPlayer(newAId),
+      getPlayer(newBId),
+    ]);
+    if (!pa || !pb) throw new MatchError('PLAYER_NOT_FOUND');
+    const odds = computeInitialOdds(pa.seed, pb.seed);
+    updates.oddsA = String(odds.oddsA);
+    updates.oddsB = String(odds.oddsB);
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await kv.hset(K.match(matchId), updates);
+  }
+}
+
 export async function setMatchBracketInfo(
   matchId: string,
   round: MatchRound | null,

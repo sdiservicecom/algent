@@ -1,0 +1,197 @@
+import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
+import { requireAdmin } from '@/lib/auth';
+import {
+  adjustUserBalance,
+  getUser,
+  listUsers,
+  setUserRole,
+} from '@/lib/users';
+import { logAudit } from '@/lib/audit';
+import { fmtPoints } from '@/lib/format';
+
+async function promote(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  const target = await getUser(id);
+  if (!target) return;
+  await setUserRole(id, 'ADMIN');
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'USER_PROMOTE',
+    targetId: id,
+    targetLabel: target.username,
+  });
+  revalidatePath('/admin/users');
+}
+
+async function demote(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  if (id === session.sub) {
+    return redirect('/admin/users?error=self-demote');
+  }
+  const target = await getUser(id);
+  if (!target) return;
+  // Garde-fou : il faut au moins 1 admin restant
+  const users = await listUsers();
+  const adminCount = users.filter((u) => u.role === 'ADMIN').length;
+  if (adminCount <= 1) {
+    return redirect('/admin/users?error=last-admin');
+  }
+  await setUserRole(id, 'USER');
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'USER_DEMOTE',
+    targetId: id,
+    targetLabel: target.username,
+  });
+  revalidatePath('/admin/users');
+}
+
+async function adjust(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  const amount = Number(formData.get('amount'));
+  const reason = String(formData.get('reason') ?? '').slice(0, 200);
+  if (!Number.isFinite(amount) || amount === 0) {
+    return redirect('/admin/users?error=amount');
+  }
+  const target = await getUser(id);
+  if (!target) return;
+  try {
+    await adjustUserBalance(id, Math.floor(amount), reason || 'admin');
+  } catch {
+    return redirect('/admin/users?error=insufficient');
+  }
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'USER_ADJUST_BALANCE',
+    targetId: id,
+    targetLabel: target.username,
+    metadata: { amount, reason },
+  });
+  revalidatePath('/admin/users');
+}
+
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const session = await requireAdmin();
+  const sp = await searchParams;
+  const users = (await listUsers()).sort((a, b) => b.balance - a.balance);
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Utilisateurs</h1>
+      {sp.error && (
+        <div className="card border-danger/40 text-danger">
+          {sp.error === 'last-admin'
+            ? 'Impossible de rétrograder : il faut au moins un administrateur.'
+            : sp.error === 'self-demote'
+              ? "Tu ne peux pas te rétrograder toi-même."
+              : sp.error === 'insufficient'
+                ? "Solde de l'utilisateur insuffisant pour ce retrait."
+                : 'Erreur — montant invalide.'}
+        </div>
+      )}
+
+      <div className="card overflow-x-auto p-0">
+        <table className="w-full min-w-[700px] text-sm">
+          <thead>
+            <tr className="border-b border-border bg-fg/5 text-left text-xs uppercase text-fg/50">
+              <th className="px-3 py-2">Utilisateur</th>
+              <th className="px-3 py-2">Rôle</th>
+              <th className="px-3 py-2 text-right">Solde</th>
+              <th className="px-3 py-2 text-right">Ajuster</th>
+              <th className="px-3 py-2 text-right">Rôle</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => {
+              const isMe = u.id === session.sub;
+              return (
+                <tr key={u.id} className="border-b border-border/50">
+                  <td className="px-3 py-2">
+                    <div className="font-medium">{u.username}</div>
+                    <div className="text-xs text-fg/50">
+                      {u.firstName} {u.lastName}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`pill ${
+                        u.role === 'ADMIN'
+                          ? 'bg-accent/20 text-accent'
+                          : 'bg-fg/10 text-fg/70'
+                      }`}
+                    >
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono">
+                    {fmtPoints(u.balance)}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <form
+                      action={adjust}
+                      className="flex items-center justify-end gap-1"
+                    >
+                      <input type="hidden" name="id" value={u.id} />
+                      <input
+                        name="amount"
+                        type="number"
+                        step={1}
+                        placeholder="±pts"
+                        className="input w-24 text-right"
+                      />
+                      <input
+                        name="reason"
+                        placeholder="motif"
+                        className="input w-32"
+                      />
+                      <button className="btn-secondary" type="submit">
+                        OK
+                      </button>
+                    </form>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {u.role === 'USER' ? (
+                      <form action={promote}>
+                        <input type="hidden" name="id" value={u.id} />
+                        <button className="btn-secondary" type="submit">
+                          Promouvoir admin
+                        </button>
+                      </form>
+                    ) : (
+                      <form action={demote}>
+                        <input type="hidden" name="id" value={u.id} />
+                        <button
+                          className="btn-secondary"
+                          type="submit"
+                          disabled={isMe}
+                        >
+                          Rétrograder
+                        </button>
+                      </form>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export const dynamic = 'force-dynamic';

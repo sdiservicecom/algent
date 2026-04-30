@@ -48,6 +48,12 @@ export function BetForm({ matchId, playerA, playerB, balance, action }: Props) {
   const canSubmit = pick && stakeValid;
 
   const fireBurst = () => {
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
     const base = counterRef.current;
     counterRef.current += PARTICLE_COUNT;
     const next: Particle[] = Array.from({ length: PARTICLE_COUNT }, (_, i) => {

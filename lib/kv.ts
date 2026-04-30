@@ -64,6 +64,9 @@ export const K = {
   combosByUser: (userId: string) => `algent:combos:byuser:${userId}`,
   combosByMatch: (matchId: string) => `algent:combos:bymatch:${matchId}`,
 
+  auditEntry: (id: string) => `algent:audit:${id}`,
+  auditAll: () => `algent:audits:all`,
+
   tournament: () => `algent:tournament`,
   tournamentBet: (id: string) => `algent:tbet:${id}`,
   tournamentBetByUser: (userId: string) => `algent:tbets:byuser:${userId}`,

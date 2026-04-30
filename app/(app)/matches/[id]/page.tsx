@@ -10,6 +10,7 @@ import { LOCK_BEFORE_START_MS } from '@/lib/odds';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import { BetForm } from '@/components/BetForm';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { Sparkline } from '@/components/Sparkline';
 
 async function placeBetAction(formData: FormData) {
   'use server';
@@ -229,6 +230,40 @@ export default async function MatchDetailPage({
             ? 'Les paris sont fermés (moins de 2 minutes avant le début).'
             : 'Les paris ne sont pas ouverts pour ce match.'}
         </div>
+      )}
+
+      {snapshots.length > 1 && (
+        <section className="card">
+          <h2 className="mb-3 text-lg font-semibold">Évolution des cotes</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="text-fg/60">{pa.firstName} {pa.lastName}</span>
+                <span className="font-mono text-accent">
+                  {fmtOdds(snapshots[snapshots.length - 1].oddsA)}
+                </span>
+              </div>
+              <Sparkline
+                values={snapshots.map((s) => s.oddsA)}
+                width={400}
+                height={80}
+              />
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="text-fg/60">{pb.firstName} {pb.lastName}</span>
+                <span className="font-mono text-accent">
+                  {fmtOdds(snapshots[snapshots.length - 1].oddsB)}
+                </span>
+              </div>
+              <Sparkline
+                values={snapshots.map((s) => s.oddsB)}
+                width={400}
+                height={80}
+              />
+            </div>
+          </div>
+        </section>
       )}
 
       {snapshots.length > 0 && (

@@ -40,6 +40,12 @@ export default async function AdminLayout({
             >
               Tournoi
             </Link>
+            <Link href="/admin/users" className="shrink-0 text-white/80 hover:text-white">
+              Utilisateurs
+            </Link>
+            <Link href="/admin/audit" className="shrink-0 text-white/80 hover:text-white">
+              Journal
+            </Link>
             <Link href="/dashboard" className="shrink-0 text-white/80 hover:text-white">
               ← Retour app
             </Link>

@@ -82,6 +82,23 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   return (await getUser(id))!;
 }
 
+export async function setUserRole(id: string, role: Role): Promise<void> {
+  const user = await getUser(id);
+  if (!user) throw new UserError('INVALID_INPUT');
+  await kv.hset(K.user(id), { role });
+}
+
+export async function adjustUserBalance(
+  id: string,
+  delta: number,
+  reason: string,
+): Promise<void> {
+  if (!Number.isFinite(delta) || delta === 0) return;
+  await applyWalletDelta(id, delta, 'ADMIN_ADJUSTMENT', {
+    metadata: { reason },
+  });
+}
+
 function parseUser(id: string, raw: Record<string, string | number>): User {
   return {
     id,

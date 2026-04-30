@@ -56,6 +56,9 @@ export default async function AppLayout({
               <Link href="/tournament" className="shrink-0 text-white/80 hover:text-white">
                 Tournoi
               </Link>
+              <Link href="/stats" className="shrink-0 text-white/80 hover:text-white">
+                Stats
+              </Link>
               {user.role === 'ADMIN' && (
                 <Link
                   href="/admin"

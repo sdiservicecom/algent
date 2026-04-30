@@ -3,6 +3,8 @@ import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { ComboError, placeComboBet } from '@/lib/combos';
 import { WalletError } from '@/lib/wallet';
+import { checkLimit, limits } from '@/lib/ratelimit';
+import { reserveIdempotencyKey } from '@/lib/idempotency';
 
 interface BodyItem {
   matchId: string;
@@ -13,6 +15,25 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session)
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+
+  const rl = await checkLimit(limits.bet, session.sub);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec },
+      { status: 429, headers: { 'retry-after': String(rl.retryAfterSec) } },
+    );
+  }
+
+  const idemKey = req.headers.get('idempotency-key');
+  if (idemKey) {
+    const fresh = await reserveIdempotencyKey(session.sub, `combo:${idemKey}`);
+    if (!fresh) {
+      return NextResponse.json(
+        { error: 'DUPLICATE_REQUEST' },
+        { status: 409 },
+      );
+    }
+  }
 
   let stake: number;
   let items: BodyItem[];

@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import bcrypt from 'bcryptjs';
 import { getSession, setSessionCookie, signSession } from '@/lib/auth';
 import { getUserByUsername } from '@/lib/users';
+import { checkLimit, limits } from '@/lib/ratelimit';
 
 async function login(formData: FormData) {
   'use server';
@@ -11,6 +13,9 @@ async function login(formData: FormData) {
   if (!username || !password) {
     return redirect('/login?error=missing');
   }
+  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anon';
+  const rl = await checkLimit(limits.login, `${ip}:${username.toLowerCase()}`);
+  if (!rl.ok) return redirect('/login?error=ratelimit');
   const user = await getUserByUsername(username);
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return redirect('/login?error=invalid');
@@ -67,7 +72,9 @@ export default async function LoginPage({
             <p className="text-sm text-danger">
               {sp.error === 'invalid'
                 ? 'Pseudonyme ou mot de passe incorrect.'
-                : 'Champs manquants.'}
+                : sp.error === 'ratelimit'
+                  ? 'Trop de tentatives — réessaie dans une minute.'
+                  : 'Champs manquants.'}
             </p>
           )}
           <button className="btn-primary w-full" type="submit">
