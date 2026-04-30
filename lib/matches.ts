@@ -2,7 +2,7 @@ import { K, kv, newId } from './kv';
 import { computeInitialOdds } from './odds';
 import type { Bet, Match, MatchStatus, OddsSnapshot } from './types';
 import { getPlayer } from './players';
-import { notifyUser } from './push';
+import { createNotification } from './notifications';
 import { applyWalletDelta } from './wallet';
 import { fmtPlayerName } from './format';
 
@@ -139,12 +139,13 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
         matchId,
       });
       notifications.push(
-        notifyUser(bet.userId, {
-          title: '🎉 Pari gagné',
+        createNotification({
+          userId: bet.userId,
+          kind: 'BET_WON',
+          title: 'Pari gagné',
           body: `${matchLabel} — ${winnerLabel} l'emporte. +${payout} pts crédités.`,
           url: '/history',
-          tag: `bet-${betId}`,
-        }),
+        }).then(() => undefined),
       );
     } else {
       const updated: Bet = {
@@ -156,12 +157,13 @@ export async function settleMatch(matchId: string, winnerId: string): Promise<vo
       await kv.set(K.bet(betId), updated);
       await applyWalletDelta(bet.userId, 0, 'BET_LOST', { betId, matchId });
       notifications.push(
-        notifyUser(bet.userId, {
+        createNotification({
+          userId: bet.userId,
+          kind: 'BET_LOST',
           title: 'Pari perdu',
           body: `${matchLabel} — ${winnerLabel} l'emporte. Mise de ${bet.stake} pts perdue.`,
           url: '/history',
-          tag: `bet-${betId}`,
-        }),
+        }).then(() => undefined),
       );
     }
 

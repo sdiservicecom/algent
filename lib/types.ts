@@ -108,3 +108,21 @@ export interface TournamentBet {
   placedAt: string;
   settledAt: string | null;
 }
+
+export type NotificationKind =
+  | 'BET_WON'
+  | 'BET_LOST'
+  | 'TOURNAMENT_WON'
+  | 'TOURNAMENT_LOST'
+  | 'INFO';
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  url: string | null;
+  read: boolean;
+  createdAt: string;
+}

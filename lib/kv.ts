@@ -56,7 +56,9 @@ export const K = {
 
   oddsSnapshots: (matchId: string) => `algent:odds:bymatch:${matchId}`,
 
-  pushSubs: (userId: string) => `algent:push:subs:${userId}`,
+  notification: (id: string) => `algent:notif:${id}`,
+  notificationsByUser: (userId: string) => `algent:notifs:byuser:${userId}`,
+  unreadByUser: (userId: string) => `algent:notifs:unread:${userId}`,
 
   tournament: () => `algent:tournament`,
   tournamentBet: (id: string) => `algent:tbet:${id}`,

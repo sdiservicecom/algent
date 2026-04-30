@@ -7,6 +7,7 @@ import { listPlayers } from '@/lib/players';
 import { UpcomingMatchesBanner } from '@/components/UpcomingMatchesBanner';
 import { BasketProvider } from '@/components/BasketContext';
 import { FloatingBetBasket } from '@/components/FloatingBetBasket';
+import { NotificationBell } from '@/components/NotificationBell';
 
 async function logout() {
   'use server';
@@ -65,6 +66,7 @@ export default async function AppLayout({
               <span className="hidden text-white/60 sm:inline">
                 {user.username}
               </span>
+              <NotificationBell />
               <form action={logout}>
                 <button className="btn-secondary text-xs sm:text-sm" type="submit">
                   <span className="sm:hidden">Sortir</span>

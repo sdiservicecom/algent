@@ -1,7 +1,7 @@
 import { K, kv, newId } from './kv';
 import { ODDS_MAX, ODDS_MIN } from './odds';
 import { listPlayers } from './players';
-import { notifyUser } from './push';
+import { createNotification } from './notifications';
 import type {
   Player,
   Tournament,
@@ -179,12 +179,13 @@ export async function settleTournament(winnerId: string) {
         metadata: { tournament: true },
       });
       notifications.push(
-        notifyUser(bet.userId, {
-          title: '🏆 Pari tournoi gagné',
+        createNotification({
+          userId: bet.userId,
+          kind: 'TOURNAMENT_WON',
+          title: 'Pari tournoi gagné',
           body: `Tu as misé sur le bon vainqueur. +${payout} pts crédités.`,
           url: '/tournament',
-          tag: `tbet-${bet.id}`,
-        }),
+        }).then(() => undefined),
       );
     } else {
       const updated: TournamentBet = {
@@ -199,12 +200,13 @@ export async function settleTournament(winnerId: string) {
         metadata: { tournament: true },
       });
       notifications.push(
-        notifyUser(bet.userId, {
+        createNotification({
+          userId: bet.userId,
+          kind: 'TOURNAMENT_LOST',
           title: 'Pari tournoi perdu',
           body: `Mise de ${bet.stake} pts perdue sur le pari du tournoi.`,
           url: '/tournament',
-          tag: `tbet-${bet.id}`,
-        }),
+        }).then(() => undefined),
       );
     }
     await kv.del(K.tournamentBetGuard(bet.userId));
