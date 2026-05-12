@@ -49,3 +49,30 @@ export async function hasReceivedTodayBonus(userId: string) {
   const amount = await kv.get<number>(K.dailyBonus(userId, today));
   return { received: amount != null, amount: amount ?? null };
 }
+
+export type ClaimBonusResult =
+  | { ok: true; amount: number }
+  | { ok: false; reason: 'ALREADY_CLAIMED' };
+
+/**
+ * Réclamation manuelle (depuis le bouton "Récupérer le bonus quotidien").
+ * Pose le marqueur en `NX` pour éviter les double-crédits puis applique le
+ * delta wallet. Contrairement au cron, on n'exige pas qu'il y ait un match
+ * aujourd'hui — l'utilisateur fait l'effort de cliquer, on lui donne ses
+ * points.
+ */
+export async function claimDailyBonus(
+  userId: string,
+): Promise<ClaimBonusResult> {
+  const today = isoDate(new Date());
+  const reserved = await kv.set(
+    K.dailyBonus(userId, today),
+    DAILY_BONUS_AMOUNT,
+    { nx: true },
+  );
+  if (reserved !== 'OK') return { ok: false, reason: 'ALREADY_CLAIMED' };
+  await applyWalletDelta(userId, DAILY_BONUS_AMOUNT, 'DAILY_BONUS', {
+    metadata: { bonusDate: today, source: 'manual' },
+  });
+  return { ok: true, amount: DAILY_BONUS_AMOUNT };
+}

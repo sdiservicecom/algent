@@ -18,10 +18,9 @@ body {
 }
 
 body {
-  /* Gradient SDI Bet : tres sombre en haut, vert sapin plus chaud en bas */
-  background:
-    radial-gradient(120% 60% at 50% 0%, rgba(15, 50, 36, 0.6) 0%, rgba(4, 16, 12, 0) 60%),
-    linear-gradient(180deg, #04100c 0%, #061a13 45%, #0a2a1c 100%);
+  /* Gradient SDI Bet — du noir-vert foncé en haut au vert sapin plus chaud
+     sous le pli (passe 47% restant noir, puis dérive vers #177F4B). */
+  background: linear-gradient(187deg, #05190f 47.63%, #177f4b 118.47%);
   background-attachment: fixed;
   min-height: 100dvh;
 }

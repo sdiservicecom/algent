@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ResultModal, type ResultPayload } from './ResultModal';
 import { CoinIcon } from './CoinIcon';
+import { BonusCTA } from './BonusCTA';
 import { fmtPoints } from '@/lib/format';
 
 interface RankRow {
@@ -106,7 +107,7 @@ export function DashboardClient({
       </section>
 
       {/* Bouton bonus */}
-      <BonusButton bonus={bonus} />
+      <BonusCTA initial={bonus} />
 
       {/* Question pour du pognon (placeholder) */}
       <QuestionCard />
@@ -202,32 +203,6 @@ export function DashboardClient({
 
       {/* Pop-up résultat (perte / gain) */}
       {modalPayload && <ResultModal payload={modalPayload} />}
-    </div>
-  );
-}
-
-function BonusButton({ bonus }: { bonus: { received: boolean; amount: number | null } }) {
-  if (bonus.received) {
-    return (
-      <div className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-success/15 px-4 py-3 text-sm font-semibold text-success">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M5 13l4 4L19 7" />
-        </svg>
-        Bonus du jour reçu&nbsp;
-        {bonus.amount != null && (
-          <span className="inline-flex items-center gap-1">
-            (+{fmtPoints(bonus.amount)} <CoinIcon size={12} />)
-          </span>
-        )}
-      </div>
-    );
-  }
-  return (
-    <div className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-coin px-4 py-3 text-sm font-semibold text-black">
-      Récupère ton bonus
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden>
-        <path d="M12 5v14M5 12h14" />
-      </svg>
     </div>
   );
 }

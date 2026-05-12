@@ -8,13 +8,12 @@ import {
   cachedListPlayers as listPlayers,
 } from '@/lib/cache';
 import { computeTournamentOdds, getTournament } from '@/lib/tournament';
-import { fmtPoints } from '@/lib/format';
 import { MatchCard } from '@/components/MatchCard';
 import { FilterPills } from '@/components/home/FilterPills';
 import { TournamentContenders } from '@/components/home/TournamentContenders';
 import { LeaderboardMini } from '@/components/home/LeaderboardMini';
 import { RecentResultCard } from '@/components/home/RecentResultCard';
-import { CoinIcon } from '@/components/CoinIcon';
+import { BonusCTA } from '@/components/BonusCTA';
 
 export default async function DashboardPage() {
   const session = await requireUser();
@@ -77,7 +76,7 @@ export default async function DashboardPage() {
           <span className="font-bold text-fg">paris fun</span> pour les
           tournois de SPHÈRE DISTRIBUTION.
         </p>
-        <BonusCTA bonus={bonus} />
+        <BonusCTA initial={bonus} />
         <FilterPills pinnedCount={pinnedCount} />
       </section>
 
@@ -250,39 +249,6 @@ function SectionTitle({
       </span>
       <span>{children}</span>
     </h2>
-  );
-}
-
-function BonusCTA({
-  bonus,
-}: {
-  bonus: { received: boolean; amount: number | null };
-}) {
-  if (bonus.received) {
-    return (
-      <div className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-success/15 px-4 py-3 text-sm font-semibold text-success">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M5 13l4 4L19 7" />
-        </svg>
-        Bonus quotidien reçu&nbsp;
-        {bonus.amount != null && (
-          <span className="inline-flex items-center gap-1">
-            (+{fmtPoints(bonus.amount)} <CoinIcon size={12} />)
-          </span>
-        )}
-      </div>
-    );
-  }
-  return (
-    <div
-      role="status"
-      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-coin px-4 py-3 text-sm font-semibold text-black"
-    >
-      Récupérer le bonus quotidien
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden>
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-    </div>
   );
 }
 

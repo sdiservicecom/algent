@@ -11,7 +11,7 @@ interface Item {
   match?: (path: string) => boolean;
 }
 
-const ICON_SIZE = 24;
+const ICON_SIZE = 28;
 
 const ICONS: Record<string, React.ReactNode> = {
   home: (
@@ -145,7 +145,7 @@ export function BottomNav() {
       style={{ paddingBottom: 'calc(0.6rem + var(--safe-bottom))' }}
     >
       <ul
-        className="pointer-events-auto flex w-full max-w-sm items-center justify-between rounded-full border border-white/15 bg-bg/85 px-4 py-2 shadow-2xl backdrop-blur-lg"
+        className="pointer-events-auto flex w-full max-w-sm items-center justify-between rounded-full border border-white bg-transparent px-4 py-2 shadow-2xl backdrop-blur-md"
       >
         {ITEMS.map((it) => {
           const active = it.match ? it.match(pathname) : pathname === it.href;
@@ -155,10 +155,10 @@ export function BottomNav() {
                 href={it.href}
                 aria-label={it.label}
                 aria-current={active ? 'page' : undefined}
-                className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${
+                className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition ${
                   active
                     ? 'bg-white text-bg shadow-md'
-                    : 'text-fg/75 hover:text-fg'
+                    : 'text-white/85 hover:text-white'
                 }`}
               >
                 {it.icon}
