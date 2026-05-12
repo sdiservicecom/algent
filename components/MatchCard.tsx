@@ -44,6 +44,9 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
   const settled = match.status === 'SETTLED' && winner;
   const inBasket = hasMatch(match.id) && canBet;
   const live = match.status === 'IN_PROGRESS' || match.status === 'LOCKED';
+  const total = match.totalStakeA + match.totalStakeB;
+  const pctA = total > 0 ? Math.round((match.totalStakeA / total) * 100) : null;
+  const pctB = total > 0 ? Math.round((match.totalStakeB / total) * 100) : null;
 
   const handlePick = (player: Player, odds: number) => {
     if (!canBet) return;
@@ -79,28 +82,23 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
 
       <header className="relative z-10 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          {match.round && (
-            <span className="inline-flex items-center gap-1 text-fg/60">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M8 21h8M12 17v4" />
-                <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
-              </svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="text-fg/70">
+            <polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9 12 2" />
+          </svg>
+          {live ? (
+            <span className="inline-flex items-center gap-1.5 text-danger">
+              <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-danger" aria-hidden />
+              <span className="font-semibold">{status.label}</span>
+            </span>
+          ) : match.round ? (
+            <span className="font-semibold text-fg/80">
               {MATCH_ROUND_LABEL[match.round]}
             </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {live && (
-            <span className="inline-flex items-center gap-1 text-danger">
-              <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-danger" aria-hidden />
-              <span className="font-semibold uppercase">{status.label}</span>
-            </span>
-          )}
-          {!live && (
+          ) : (
             <span className={`pill ${status.color}`}>{status.label}</span>
           )}
-          <span aria-hidden className="text-danger">📍</span>
         </div>
+        <span aria-hidden className="text-danger">📍</span>
       </header>
 
       <div className="relative z-10 mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -113,6 +111,7 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
           isWinner={settled ? winner?.id === pa.id : false}
           isMe={viewerUserId === pa.linkedUserId}
           onPick={() => handlePick(pa, match.oddsA)}
+          stakePct={pctA}
         />
         <div className="flex flex-col items-center text-xs">
           {match.scoreA != null && match.scoreB != null ? (
@@ -136,6 +135,7 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
           isMe={viewerUserId === pb.linkedUserId}
           onPick={() => handlePick(pb, match.oddsB)}
           align="right"
+          stakePct={pctB}
         />
       </div>
 
@@ -166,6 +166,8 @@ interface SlotProps {
   isMe?: boolean;
   align?: 'left' | 'right';
   onPick: () => void;
+  /** Pourcentage de la mise totale du match sur ce joueur (0-100). */
+  stakePct: number | null;
 }
 
 function PlayerSlot({
@@ -176,27 +178,33 @@ function PlayerSlot({
   settled,
   isWinner,
   isMe,
-  align = 'left',
   onPick,
+  stakePct,
 }: SlotProps) {
+  // Cote en pilule verte si c'est le favori du marché (>= 60% des mises)
+  const isFav = stakePct != null && stakePct >= 60;
+  const pillTone = settled
+    ? isWinner
+      ? '!bg-success !text-black'
+      : 'odds-pill-loser'
+    : picked
+      ? 'odds-pill-active'
+      : isFav
+        ? '!bg-accent !text-black'
+        : '';
+
   const oddsButton = settled ? (
-    <span
-      className={`odds-pill ${
-        isWinner ? '!bg-success !text-black' : 'odds-pill-loser'
-      }`}
-    >
-      {fmtOdds(odds)}
-    </span>
+    <span className={`odds-pill ${pillTone}`}>{fmtOdds(odds)}</span>
   ) : canBet ? (
     <button
       type="button"
       onClick={onPick}
-      className={`odds-pill ${picked ? 'odds-pill-active' : ''}`}
+      className={`odds-pill ${pillTone}`}
     >
       {fmtOdds(odds)}
     </button>
   ) : (
-    <span className="odds-pill opacity-70">{fmtOdds(odds)}</span>
+    <span className={`odds-pill opacity-70 ${pillTone}`}>{fmtOdds(odds)}</span>
   );
 
   return (
@@ -211,6 +219,19 @@ function PlayerSlot({
         )}
       </div>
       <div className="mt-1">{oddsButton}</div>
+      {stakePct != null && (
+        <div className="mt-1.5 flex w-full max-w-[80%] flex-col items-center gap-1">
+          <span className="text-[10px] font-semibold text-fg/60">
+            {stakePct}%
+          </span>
+          <span className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+            <span
+              className={`block h-full ${isFav ? 'bg-accent' : 'bg-fg/40'}`}
+              style={{ width: `${stakePct}%` }}
+            />
+          </span>
+        </div>
+      )}
     </div>
   );
 }

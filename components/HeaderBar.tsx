@@ -18,7 +18,7 @@ interface Props {
 export function HeaderBar({
   balance,
   username,
-  profileHref = '/dashboard',
+  profileHref = '/profile',
   isAdmin = false,
 }: Props) {
   return (
