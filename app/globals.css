@@ -7,22 +7,32 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-html,
+html {
+  min-height: 100%;
+  background: #05190f;
+}
+
 body {
-  height: 100%;
-  background: #04100c;
   color: #e8efe9;
   font-family: var(--font-open-sans), system-ui, -apple-system, sans-serif;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  /* Pas de background ici — c'est ::before (position: fixed) qui peint
+     le gradient et couvre toujours toute la viewport, même quand la
+     page scrolle ou dépasse 100dvh. Évite les soucis de
+     background-attachment: fixed sur iOS Safari. */
+  position: relative;
+  background: transparent;
 }
 
-body {
-  /* Gradient SDI Bet — du noir-vert foncé en haut au vert sapin plus chaud
-     sous le pli (passe 47% restant noir, puis dérive vers #177F4B). */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
   background: linear-gradient(187deg, #05190f 47.63%, #177f4b 118.47%);
-  background-attachment: fixed;
-  min-height: 100dvh;
+  pointer-events: none;
 }
 
 h1,
