@@ -14,7 +14,6 @@ import { FilterPills } from '@/components/home/FilterPills';
 import { TournamentContenders } from '@/components/home/TournamentContenders';
 import { LeaderboardMini } from '@/components/home/LeaderboardMini';
 import { RecentResultCard } from '@/components/home/RecentResultCard';
-import { NextMatchCountdown } from '@/components/home/NextMatchCountdown';
 import { CoinIcon } from '@/components/CoinIcon';
 
 export default async function DashboardPage() {
@@ -215,13 +214,6 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* Countdown flottant vers le prochain match */}
-      {featuredUpcoming && (
-        <NextMatchCountdown
-          startsAt={featuredUpcoming.startsAt}
-          href={`/matches/${featuredUpcoming.id}`}
-        />
-      )}
     </div>
   );
 }
