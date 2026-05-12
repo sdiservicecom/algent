@@ -84,7 +84,7 @@ export default async function DashboardPage() {
       {/* Match en cours */}
       {featuredLive && (
         <section>
-          <SectionTitle dotClass="bg-danger live-dot">Match en cours</SectionTitle>
+          <SectionTitle icon="live">Match en cours</SectionTitle>
           <ul>
             <MatchCard
               match={featuredLive}
@@ -100,7 +100,7 @@ export default async function DashboardPage() {
       {/* Match à venir (le suivant) */}
       {featuredUpcoming && (
         <section>
-          <SectionTitle dotClass="bg-fg/40">Match à venir</SectionTitle>
+          <SectionTitle icon="calendar">Match à venir</SectionTitle>
           <ul>
             <MatchCard
               match={featuredUpcoming}
@@ -174,7 +174,7 @@ export default async function DashboardPage() {
       {/* Derniers résultats */}
       {settled.length > 0 && (
         <section>
-          <SectionTitle iconCheck>Derniers résultats</SectionTitle>
+          <SectionTitle icon="check">Derniers résultats</SectionTitle>
           <ul className="grid gap-3">
             {settled.map((m) => {
               const pa = playerMap[m.playerAId];
@@ -193,7 +193,7 @@ export default async function DashboardPage() {
       {/* Matchs à venir — liste compacte (suivants après le featured) */}
       {extraUpcoming.length > 0 && (
         <section>
-          <SectionTitle dotClass="bg-fg/40">Matchs à venir</SectionTitle>
+          <SectionTitle icon="calendar">Matchs à venir</SectionTitle>
           <ul className="grid gap-3">
             {extraUpcoming.map((m) => {
               const pa = playerMap[m.playerAId];
@@ -218,28 +218,36 @@ export default async function DashboardPage() {
   );
 }
 
+type SectionIcon = 'live' | 'calendar' | 'check';
+
 function SectionTitle({
   children,
-  dotClass,
-  iconCheck,
+  icon,
 }: {
   children: React.ReactNode;
-  dotClass?: string;
-  iconCheck?: boolean;
+  icon: SectionIcon;
 }) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg/70">
-      {iconCheck ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="12" cy="12" r="10" />
-          <path d="M8 12l3 3 5-6" />
-        </svg>
-      ) : dotClass ? (
-        <span
-          className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotClass}`}
-          aria-hidden
-        />
-      ) : null}
+    <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-white">
+      <span aria-hidden className="text-fg/85">
+        {icon === 'live' && (
+          <span className="inline-flex items-center gap-2">
+            <span className="live-dot inline-block h-2 w-2 rounded-full bg-danger" />
+          </span>
+        )}
+        {icon === 'calendar' && (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M16 3v4M8 3v4M3 10h18" />
+          </svg>
+        )}
+        {icon === 'check' && (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="10" />
+            <path d="M8 12l3 3 5-6" />
+          </svg>
+        )}
+      </span>
       <span>{children}</span>
     </h2>
   );

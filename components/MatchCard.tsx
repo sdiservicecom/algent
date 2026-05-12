@@ -3,7 +3,21 @@
 import Link from 'next/link';
 import { useBasket } from './BasketContext';
 import { PlayerAvatar } from './PlayerAvatar';
-import { fmtDateTime, fmtOdds } from '@/lib/format';
+import { fmtOdds } from '@/lib/format';
+
+const fmtShortDate = (d: string) =>
+  new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+  })
+    .format(new Date(d))
+    .replace('.', '');
+
+const fmtTime = (d: string) =>
+  new Intl.DateTimeFormat('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(d));
 import {
   MATCH_ROUND_LABEL,
   type Match,
@@ -82,23 +96,28 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
 
       <header className="relative z-10 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="text-fg/70">
-            <polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9 12 2" />
-          </svg>
+          <span
+            aria-hidden
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/8 text-fg/85"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9 12 2" />
+            </svg>
+          </span>
           {live ? (
             <span className="inline-flex items-center gap-1.5 text-danger">
               <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-danger" aria-hidden />
-              <span className="font-semibold">{status.label}</span>
+              <span className="text-sm font-semibold">{status.label}</span>
             </span>
           ) : match.round ? (
-            <span className="font-semibold text-fg/80">
+            <span className="text-sm font-semibold text-fg">
               {MATCH_ROUND_LABEL[match.round]}
             </span>
           ) : (
             <span className={`pill ${status.color}`}>{status.label}</span>
           )}
         </div>
-        <span aria-hidden className="text-danger">📍</span>
+        <span aria-hidden className="text-base leading-none">🏓</span>
       </header>
 
       <div className="relative z-10 mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -113,17 +132,21 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
           onPick={() => handlePick(pa, match.oddsA)}
           stakePct={pctA}
         />
-        <div className="flex flex-col items-center text-xs">
+        <div className="flex flex-col items-center text-center">
           {match.scoreA != null && match.scoreB != null ? (
-            <span className="font-mono text-base font-bold">
+            <span className="font-mono text-lg font-bold">
               {match.scoreA} – {match.scoreB}
             </span>
           ) : (
-            <span className="text-fg/30">vs</span>
+            <>
+              <span className="text-sm font-semibold text-fg/70">
+                {fmtShortDate(match.startsAt)}
+              </span>
+              <span className="font-mono text-lg font-bold leading-tight">
+                {fmtTime(match.startsAt)}
+              </span>
+            </>
           )}
-          <span className="mt-1 text-[10px] uppercase tracking-wide text-fg/50">
-            {fmtDateTime(match.startsAt)}
-          </span>
         </div>
         <PlayerSlot
           player={pb}
@@ -181,35 +204,45 @@ function PlayerSlot({
   onPick,
   stakePct,
 }: SlotProps) {
-  // Cote en pilule verte si c'est le favori du marché (>= 60% des mises)
-  const isFav = stakePct != null && stakePct >= 60;
+  // Favori du marché si >= 50% des mises sur ce côté.
+  const isFav = stakePct != null && stakePct >= 50;
+
+  // Style de la pilule :
+  //  - settled  → vert plein si gagnant, grisé barré sinon
+  //  - picked   → vert plein "glow"
+  //  - favori   → vert plein
+  //  - défaut   → bordure verte + texte vert
+  const pillBase =
+    'inline-flex items-center justify-center rounded-full px-5 py-1 text-sm font-semibold transition';
   const pillTone = settled
     ? isWinner
-      ? '!bg-success !text-black'
-      : 'odds-pill-loser'
+      ? 'bg-accent text-black'
+      : 'border border-fg/15 text-fg/30 line-through'
     : picked
-      ? 'odds-pill-active'
+      ? 'bg-accent text-black shadow-glow-soft'
       : isFav
-        ? '!bg-accent !text-black'
-        : '';
+        ? 'bg-accent text-black'
+        : 'border border-accent/60 bg-transparent text-accent';
 
   const oddsButton = settled ? (
-    <span className={`odds-pill ${pillTone}`}>{fmtOdds(odds)}</span>
+    <span className={`${pillBase} ${pillTone}`}>{fmtOdds(odds)}</span>
   ) : canBet ? (
     <button
       type="button"
       onClick={onPick}
-      className={`odds-pill ${pillTone}`}
+      className={`${pillBase} ${pillTone}`}
     >
       {fmtOdds(odds)}
     </button>
   ) : (
-    <span className={`odds-pill opacity-70 ${pillTone}`}>{fmtOdds(odds)}</span>
+    <span className={`${pillBase} ${pillTone} opacity-80`}>
+      {fmtOdds(odds)}
+    </span>
   );
 
   return (
-    <div className={`flex flex-col items-center text-center`}>
-      <PlayerAvatar player={player} size={56} />
+    <div className="flex flex-col items-center text-center">
+      <PlayerAvatar player={player} size={72} className="ring-1 ring-border" />
       <div className="mt-2 truncate text-sm font-semibold">
         {player.firstName}
         {isMe && (
@@ -218,16 +251,16 @@ function PlayerSlot({
           </span>
         )}
       </div>
-      <div className="mt-1">{oddsButton}</div>
+      <div className="mt-2">{oddsButton}</div>
       {stakePct != null && (
-        <div className="mt-1.5 flex w-full max-w-[80%] flex-col items-center gap-1">
-          <span className="text-[10px] font-semibold text-fg/60">
+        <div className="mt-2 flex w-full items-center gap-2 text-[11px] font-semibold">
+          <span className={isFav ? 'text-success' : 'text-danger'}>
             {stakePct}%
           </span>
-          <span className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+          <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/8">
             <span
-              className={`block h-full ${isFav ? 'bg-accent' : 'bg-fg/40'}`}
-              style={{ width: `${stakePct}%` }}
+              className={`block h-full ${isFav ? 'bg-success' : 'bg-danger'}`}
+              style={{ width: `${Math.max(stakePct, 5)}%` }}
             />
           </span>
         </div>
