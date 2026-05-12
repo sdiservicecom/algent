@@ -42,8 +42,10 @@ export default async function LoginPage({
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-sm flex-col">
       <AuthHero />
-      <div className="flex-1 px-6 pb-8 pt-2">
-        <h1 className="mb-6 text-center text-3xl font-bold">Connexion</h1>
+      <div className="flex-1 px-6 pb-8 pt-6">
+        <h1 className="mb-8 text-center text-3xl font-bold">
+          Rejoignez les parieurs&nbsp;!
+        </h1>
         <LoginForm action={login} errorCode={sp.error} />
         <div className="my-6 flex items-center gap-3 text-xs text-fg/40">
           <span className="h-px flex-1 bg-border" />
@@ -51,8 +53,13 @@ export default async function LoginPage({
           <span className="h-px flex-1 bg-border" />
         </div>
         <Link href="/register" className="btn-outline-accent w-full">
-          Créer mon compte
+          Créer un compte
         </Link>
+        <p className="mt-8 text-center text-xs text-fg/55">
+          SDI Bet est un site de paris fictif créé pour parier sur les matchs du
+          tournoi de ping-pong. Le site n'est pas lié au CSE de l'entreprise, ni
+          même à l'entreprise.
+        </p>
       </div>
     </main>
   );
