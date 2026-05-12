@@ -23,21 +23,31 @@ export function TournamentContenders({ players, odds, winnerId }: Props) {
     return (odds[a.id] ?? 999) - (odds[b.id] ?? 999);
   });
 
-  if (sorted.length === 0) return null;
+  // État vide explicite — sinon la section disparait silencieusement
+  // quand l'admin n'a pas encore créé les joueurs.
+  if (sorted.length === 0) {
+    return (
+      <Link
+        href="/tournament"
+        className="card flex flex-col items-center gap-2 py-6 text-center text-sm text-fg/60 hover:border-accent/60"
+      >
+        <span className="text-3xl" aria-hidden>🏆</span>
+        <span>Aucun joueur configuré pour l'instant.</span>
+        <span className="text-xs text-accent">Voir le tournoi →</span>
+      </Link>
+    );
+  }
 
   return (
-    <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+    <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {sorted.map((p) => {
         const c = odds[p.id];
         const isWinner = winnerId === p.id;
         return (
-          <li
-            key={p.id}
-            className="snap-start"
-          >
+          <li key={p.id} className="snap-start shrink-0">
             <Link
               href={`/tournament`}
-              className={`relative block aspect-[3/4] w-36 overflow-hidden rounded-3xl border transition ${
+              className={`relative block aspect-[3/4] w-40 overflow-hidden rounded-3xl border transition ${
                 isWinner
                   ? 'border-coin shadow-glow'
                   : 'border-border hover:border-accent/60'
@@ -51,12 +61,12 @@ export function TournamentContenders({ players, odds, winnerId }: Props) {
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-surfaceRaised to-surfaceAlt text-3xl font-bold text-fg/70">
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-surfaceRaised to-surfaceAlt text-4xl font-bold text-fg/70">
                   {p.firstName[0]}
                   {p.lastName[0]}
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-3">
                 <div className="truncate text-sm font-bold text-white">
                   {p.nickname || `${p.firstName} ${p.lastName}`}
                 </div>
