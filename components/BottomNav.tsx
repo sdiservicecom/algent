@@ -20,10 +20,10 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M5 10v10h14V10" />
     </svg>
   ),
-  matches: (
+  bets: (
     <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="4" y="3" width="16" height="18" rx="2" />
-      <path d="M9 8h6M9 12h6M9 16h4" />
+      <path d="M9 3h6a2 2 0 0 1 2 2v16l-5-2-5 2V5a2 2 0 0 1 2-2z" />
+      <path d="M9 11l2 2 4-4" />
     </svg>
   ),
   calendar: (
@@ -58,16 +58,16 @@ const ITEMS: Item[] = [
     match: (p) => p === '/' || p.startsWith('/dashboard'),
   },
   {
-    href: '/matches',
-    label: 'Matchs',
-    icon: ICONS.matches,
-    match: (p) => p.startsWith('/matches'),
+    href: '/history',
+    label: 'Mes paris',
+    icon: ICONS.bets,
+    match: (p) => p.startsWith('/history'),
   },
   {
-    href: '/history',
-    label: 'Historique',
+    href: '/matches',
+    label: 'Matchs',
     icon: ICONS.calendar,
-    match: (p) => p.startsWith('/history'),
+    match: (p) => p.startsWith('/matches'),
   },
   {
     href: '/bracket',
