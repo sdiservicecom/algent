@@ -148,17 +148,34 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
     }
   };
 
-  // — Bouton flottant : style "Mes paris (N)" — visible quand la feuille est fermée
+  // — Bouton flottant en bas à droite, style pilule verte "⌛ N" : déclencheur
+  //   du bottom sheet "Mes paris". Visible dès qu'il y a au moins un pari
+  //   dans le panier.
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Ouvrir mes paris"
-        className="fixed left-1/2 z-30 -translate-x-1/2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-black shadow-glow"
+        aria-label={`Ouvrir mes paris (${items.length})`}
+        className="fixed right-4 z-30 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black shadow-glow"
         style={{ bottom: 'calc(5.5rem + var(--safe-bottom))' }}
       >
-        🎯 Mes paris <span className="ml-1 rounded-full bg-black/20 px-2 py-0.5 text-xs">{items.length}</span>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M6 2h12M6 22h12" />
+          <path d="M6 2c0 5 6 5 6 10s-6 5-6 10" />
+          <path d="M18 2c0 5-6 5-6 10s6 5 6 10" />
+        </svg>
+        <span>{items.length}</span>
       </button>
     );
   }
