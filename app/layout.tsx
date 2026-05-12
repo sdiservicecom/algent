@@ -16,13 +16,14 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Algent — Tournoi virtuel',
-  description: 'Application interne de paris virtuels',
+  title: 'SDI Bet — Le pari du tournoi',
+  description:
+    'SDI Bet est un site de paris fictif créé pour parier sur les matchs du tournoi de ping-pong.',
   manifest: '/manifest.webmanifest',
-  themeColor: '#275250',
+  themeColor: '#04100c',
   appleWebApp: {
     capable: true,
-    title: 'Algent',
+    title: 'SDI Bet',
     statusBarStyle: 'black-translucent',
   },
   icons: {

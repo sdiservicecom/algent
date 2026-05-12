@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBasket } from './BasketContext';
 import { fmtPoints } from '@/lib/format';
+import { CoinIcon } from './CoinIcon';
 
 const newIdempotencyKey = () =>
   globalThis.crypto?.randomUUID?.() ??
@@ -27,7 +28,7 @@ const ERROR_LABEL: Record<string, string> = {
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
 export function FloatingBetBasket({ balance }: { balance: number }) {
-  const { items, remove, setStake, setScoreGuess, clear } = useBasket();
+  const { items, remove, setStake, clear } = useBasket();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('individual');
   const [comboStake, setComboStake] = useState<number>(50);
@@ -35,6 +36,19 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [comboError, setComboError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Verrouille le scroll body quand la feuille est ouverte
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open]);
 
   if (items.length === 0) return null;
 
@@ -134,173 +148,174 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
     }
   };
 
+  // — Bouton flottant : style "Mes paris (N)" — visible quand la feuille est fermée
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Ouvrir mes paris"
+        className="fixed left-1/2 z-30 -translate-x-1/2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-black shadow-glow"
+        style={{ bottom: 'calc(5.5rem + var(--safe-bottom))' }}
+      >
+        🎯 Mes paris <span className="ml-1 rounded-full bg-black/20 px-2 py-0.5 text-xs">{items.length}</span>
+      </button>
+    );
+  }
+
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      {open ? (
-        <div className="card flex max-h-[80vh] w-[min(420px,92vw)] flex-col gap-3 shadow-2xl">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Mes paris ({items.length})</h3>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-sm text-fg/60 hover:text-accent"
-              aria-label="Fermer le panier"
-            >
-              ✕
-            </button>
-          </div>
+    <>
+      {/* Overlay sombre */}
+      <div
+        className="fixed inset-0 z-40 bg-black/60 animate-fade-in"
+        onClick={() => setOpen(false)}
+        aria-hidden
+      />
 
-          <div className="flex rounded-md border border-border bg-fg/5 p-1 text-xs">
-            <button
-              type="button"
-              onClick={() => setMode('individual')}
-              className={`flex-1 rounded px-2 py-1 transition ${
-                mode === 'individual'
-                  ? 'bg-accent text-white'
-                  : 'text-fg/60 hover:text-accent'
-              }`}
-            >
-              Individuels
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('combo')}
-              className={`flex-1 rounded px-2 py-1 transition ${
-                mode === 'combo'
-                  ? 'bg-accent text-white'
-                  : 'text-fg/60 hover:text-accent'
-              }`}
-            >
-              Combiné × {combinedOdds.toFixed(2)}
-            </button>
-          </div>
-
-          <ul className="flex-1 space-y-2 overflow-y-auto">
-            {items.map((i) => (
-              <li
-                key={i.matchId}
-                className="rounded-md border border-border bg-fg/5 p-2"
+      {/* Bottom sheet */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl animate-sheet-up"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div
+          className="card-sheet flex max-h-[88dvh] flex-col gap-3"
+          style={{ paddingBottom: 'calc(1.25rem + var(--safe-bottom))' }}
+        >
+          {/* Handle + tabs + close */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMode('individual')}
+                className={`tab-pill ${
+                  mode === 'individual' ? 'tab-pill-active' : 'tab-pill-idle'
+                }`}
               >
-                <div className="truncate text-xs text-fg/60">
-                  {i.matchLabel}
-                </div>
-                <div className="truncate font-medium">
-                  {i.pickLabel}{' '}
-                  <span className="text-accent">
-                    @ {i.oddsAtAdd.toFixed(2)}
-                  </span>
-                </div>
-                {mode === 'individual' && (
-                  <>
-                    <div className="mt-2 flex items-center gap-2">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={10}
-                        max={Math.min(balance, 50_000)}
-                        step={1}
-                        value={i.stake}
-                        onChange={(e) =>
-                          setStake(
-                            i.matchId,
-                            Math.floor(Number(e.target.value)),
-                          )
-                        }
-                        className="input"
-                        aria-label="Mise"
-                      />
-                      <button
-                        onClick={() => remove(i.matchId)}
-                        className="btn-danger px-2"
-                        aria-label="Retirer"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={1}
-                        placeholder={i.playerALabel ?? 'A'}
-                        value={i.scoreGuessA ?? ''}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          const next = raw === '' ? null : Math.max(0, Math.floor(Number(raw)));
-                          setScoreGuess(
-                            i.matchId,
-                            Number.isFinite(next as number) ? (next as number) : null,
-                            i.scoreGuessB ?? null,
-                          );
-                        }}
-                        className="input text-center text-base font-semibold"
-                        aria-label={`Score ${i.playerALabel ?? 'A'}`}
-                      />
-                      <span className="text-fg/40">–</span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={1}
-                        placeholder={i.playerBLabel ?? 'B'}
-                        value={i.scoreGuessB ?? ''}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          const next = raw === '' ? null : Math.max(0, Math.floor(Number(raw)));
-                          setScoreGuess(
-                            i.matchId,
-                            i.scoreGuessA ?? null,
-                            Number.isFinite(next as number) ? (next as number) : null,
-                          );
-                        }}
-                        className="input text-center text-base font-semibold"
-                        aria-label={`Score ${i.playerBLabel ?? 'B'}`}
-                      />
-                    </div>
-                    <div className="mt-1 flex items-center justify-between text-xs text-success">
-                      <span>
-                        Gain potentiel :{' '}
-                        {fmtPoints(
-                          Math.floor(
-                            (Number(i.stake) || 0) * i.oddsAtAdd,
-                          ),
-                        )}{' '}
-                        pts
-                      </span>
-                      <span className="text-fg/50">🎯 score : bonus +mise</span>
-                    </div>
-                    {errors[i.matchId] && (
-                      <div className="mt-1 text-xs text-danger">
-                        {ERROR_LABEL[errors[i.matchId]] ?? errors[i.matchId]}
+                Simple
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('combo')}
+                className={`tab-pill ${
+                  mode === 'combo' ? 'tab-pill-active' : 'tab-pill-idle'
+                }`}
+              >
+                Combiné
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Fermer"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-fg/70 hover:bg-white/15 hover:text-fg"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+                <path d="M6 6l12 12M6 18L18 6" />
+              </svg>
+            </button>
+          </div>
+
+          <h3 className="font-display text-xl font-bold">Mes paris</h3>
+
+          {/* Liste paris */}
+          <ul className="flex-1 space-y-3 overflow-y-auto pr-1">
+            {items.map((i) => {
+              const potential = Math.floor((Number(i.stake) || 0) * i.oddsAtAdd);
+              return (
+                <li key={i.matchId} className="space-y-2 pb-3 last:pb-0">
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span aria-hidden>🏓</span>
+                        <span className="truncate font-semibold">
+                          {i.matchLabel}
+                        </span>
                       </div>
-                    )}
-                  </>
-                )}
-                {mode === 'combo' && (
-                  <div className="mt-2 flex items-center justify-end">
+                      <div className="mt-1 flex items-center gap-3 text-sm">
+                        <span className="text-fg/70">
+                          Résultats{' '}
+                          <span className="font-bold text-fg">{i.pickLabel}</span>
+                        </span>
+                        <span className="rounded-full bg-white px-3 py-0.5 text-xs font-semibold text-black">
+                          {i.oddsAtAdd.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
                     <button
                       onClick={() => remove(i.matchId)}
-                      className="btn-secondary px-2 text-xs"
-                      aria-label="Retirer du combiné"
+                      aria-label="Retirer"
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-fg/60 transition hover:bg-danger/15 hover:text-danger"
                     >
-                      Retirer
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                      </svg>
                     </button>
                   </div>
-                )}
-              </li>
-            ))}
+
+                  {mode === 'individual' && (
+                    <div className="space-y-2 rounded-2xl bg-white/[0.03] p-3">
+                      <label className="flex items-center justify-between text-sm">
+                        <span className="text-fg/70">Mise</span>
+                        <span className="relative inline-flex items-center">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={10}
+                            max={Math.min(balance, 50_000)}
+                            step={1}
+                            value={i.stake}
+                            onChange={(e) =>
+                              setStake(
+                                i.matchId,
+                                Math.floor(Number(e.target.value)),
+                              )
+                            }
+                            className="w-32 rounded-full border border-border bg-surface px-3 py-1.5 pr-8 text-right text-sm font-semibold text-fg outline-none focus:border-accent"
+                            aria-label="Mise"
+                          />
+                          <span className="pointer-events-none absolute right-3">
+                            <CoinIcon size={12} />
+                          </span>
+                        </span>
+                      </label>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold">Gains potentiels</span>
+                        <span className="inline-flex items-center gap-1.5 font-bold text-accentBright">
+                          {fmtPoints(potential)}
+                          <CoinIcon size={12} />
+                        </span>
+                      </div>
+                      {errors[i.matchId] && (
+                        <div className="text-xs text-danger">
+                          {ERROR_LABEL[errors[i.matchId]] ?? errors[i.matchId]}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
 
+          {/* Footer */}
           {mode === 'individual' ? (
-            <div className="space-y-1 border-t border-border pt-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-fg/60">Total misé</span>
-                <span className="font-semibold">{fmtPoints(total)} pts</span>
+            <div className="space-y-3 border-t border-border pt-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-fg/70">Mise totale</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-1 font-semibold">
+                  {fmtPoints(total)}
+                  <CoinIcon size={12} />
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-fg/60">Gain potentiel total</span>
-                <span className="font-semibold text-success">
-                  {fmtPoints(totalGain)} pts
+              <div className="flex items-center justify-between">
+                <span className="font-bold">Gains potentiels</span>
+                <span className="inline-flex items-center gap-1.5 font-bold text-accentBright">
+                  {fmtPoints(totalGain)}
+                  <CoinIcon size={12} />
                 </span>
               </div>
               {overflow && (
@@ -314,39 +329,61 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
                   Au moins une mise est invalide (10 – 50 000).
                 </p>
               )}
-              {errors._ && (
-                <p className="text-xs text-danger">{errors._}</p>
-              )}
+              {errors._ && <p className="text-xs text-danger">{errors._}</p>}
+              <button
+                onClick={submitIndividual}
+                disabled={submitting || overflow || someInvalid}
+                className="btn-primary w-full"
+              >
+                {submitting ? '…' : (
+                  <>
+                    Confirmer le pari
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 13l4 4L19 7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+              <button
+                onClick={clear}
+                className="block w-full text-center text-xs text-fg/50 hover:text-fg/80"
+              >
+                Vider le panier
+              </button>
             </div>
           ) : (
-            <div className="space-y-2 border-t border-border pt-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-fg/60">Cote combinée</span>
-                <span className="font-mono text-lg font-bold text-accent">
-                  × {combinedOdds.toFixed(2)}
+            <div className="space-y-3 border-t border-border pt-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-fg/70">Mise</span>
+                <span className="relative inline-flex items-center">
+                  <input
+                    type="number"
+                    min={10}
+                    max={Math.min(balance, 50_000)}
+                    step={1}
+                    value={comboStake}
+                    onChange={(e) =>
+                      setComboStake(Math.floor(Number(e.target.value)))
+                    }
+                    className="w-32 rounded-full border border-border bg-surface px-3 py-1.5 pr-8 text-right text-sm font-semibold text-fg outline-none focus:border-accent"
+                    aria-label="Mise du combiné"
+                  />
+                  <span className="pointer-events-none absolute right-3">
+                    <CoinIcon size={12} />
+                  </span>
                 </span>
               </div>
-              <div>
-                <label className="label" htmlFor="combo-stake">
-                  Mise unique (10 – {fmtPoints(Math.min(balance, 50_000))})
-                </label>
-                <input
-                  id="combo-stake"
-                  type="number"
-                  min={10}
-                  max={Math.min(balance, 50_000)}
-                  step={1}
-                  value={comboStake}
-                  onChange={(e) =>
-                    setComboStake(Math.floor(Number(e.target.value)))
-                  }
-                  className="input"
-                />
+              <div className="flex items-center justify-between">
+                <span className="text-fg/70">Cote totale</span>
+                <span className="rounded-full bg-white px-3 py-0.5 text-xs font-bold text-black">
+                  {combinedOdds.toFixed(2)}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-fg/60">Gain potentiel</span>
-                <span className="font-semibold text-success">
-                  {fmtPoints(comboPotential)} pts
+              <div className="flex items-center justify-between">
+                <span className="font-bold">Gains potentiels</span>
+                <span className="inline-flex items-center gap-1.5 font-bold text-accentBright">
+                  {fmtPoints(comboPotential)}
+                  <CoinIcon size={12} />
                 </span>
               </div>
               {!comboLegsOk && (
@@ -359,40 +396,30 @@ export function FloatingBetBasket({ balance }: { balance: number }) {
                   {ERROR_LABEL[comboError] ?? `Erreur : ${comboError}`}
                 </p>
               )}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <button onClick={clear} className="btn-secondary flex-1">
-              Vider
-            </button>
-            {mode === 'individual' ? (
-              <button
-                onClick={submitIndividual}
-                disabled={submitting || overflow || someInvalid}
-                className="btn-primary flex-1"
-              >
-                {submitting ? '…' : 'Valider tout'}
-              </button>
-            ) : (
               <button
                 onClick={submitCombo}
                 disabled={submitting || !comboStakeValid || !comboLegsOk}
-                className="btn-primary flex-1"
+                className="btn-primary w-full"
               >
-                {submitting ? '…' : 'Valider le combiné'}
+                {submitting ? '…' : (
+                  <>
+                    Confirmer le pari
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 13l4 4L19 7" />
+                    </svg>
+                  </>
+                )}
               </button>
-            )}
-          </div>
+              <button
+                onClick={clear}
+                className="block w-full text-center text-xs text-fg/50 hover:text-fg/80"
+              >
+                Vider le panier
+              </button>
+            </div>
+          )}
         </div>
-      ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className="btn-primary shadow-2xl"
-        >
-          🎯 Mes paris ({items.length})
-        </button>
-      )}
-    </div>
+      </div>
+    </>
   );
 }

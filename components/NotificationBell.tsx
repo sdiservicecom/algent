@@ -166,7 +166,7 @@ export function NotificationBell() {
           });
         }}
         aria-label="Notifications"
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/30 text-white transition hover:bg-white hover:text-accentDark"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/8 text-fg/80 transition hover:bg-white/15 hover:text-fg"
       >
         <svg
           width="18"
@@ -190,7 +190,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[min(360px,90vw)] rounded-xl border border-border bg-surface shadow-2xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[min(360px,90vw)] rounded-2xl border border-border bg-surface shadow-2xl">
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <span className="text-sm font-semibold">Notifications</span>
             {items.some((i) => !i.read) && (
