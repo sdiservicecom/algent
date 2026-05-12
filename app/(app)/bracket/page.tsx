@@ -89,7 +89,7 @@ export default async function BracketPage({
           )}
         </div>
       ) : (
-        <ul className="grid gap-4">
+        <ul className="grid gap-4 md:grid-cols-2">
           {list.map((m) => {
             const pa = playersById[m.playerAId];
             const pb = playersById[m.playerBId];

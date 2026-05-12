@@ -96,7 +96,7 @@ export default async function BetsPage({
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-4">
+        <ul className="grid gap-4 md:grid-cols-2">
           {entries.map((e) =>
             e.kind === 'simple' ? (
               <SimpleBetCard

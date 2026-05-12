@@ -175,7 +175,7 @@ export default async function DashboardPage() {
       {settled.length > 0 && (
         <section>
           <SectionTitle icon="check">Derniers résultats</SectionTitle>
-          <ul className="grid gap-3">
+          <ul className="grid gap-3 md:grid-cols-2">
             {settled.map((m) => {
               const pa = playerMap[m.playerAId];
               const pb = playerMap[m.playerBId];
@@ -194,7 +194,7 @@ export default async function DashboardPage() {
       {extraUpcoming.length > 0 && (
         <section>
           <SectionTitle icon="calendar">Matchs à venir</SectionTitle>
-          <ul className="grid gap-3">
+          <ul className="grid gap-3 md:grid-cols-2">
             {extraUpcoming.map((m) => {
               const pa = playerMap[m.playerAId];
               const pb = playerMap[m.playerBId];

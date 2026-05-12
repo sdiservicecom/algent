@@ -24,8 +24,10 @@ export function HeaderBar({
   return (
     <header className="sticky top-0 z-20 backdrop-blur-md">
       <div className="bg-bg/80 border-b border-border/40">
-        <div className="mx-auto flex h-14 max-w-2xl items-center gap-3 px-4">
-          <BrandLogo size="md" />
+        <div className="mx-auto flex h-14 max-w-2xl items-center gap-3 px-4 md:h-16 md:max-w-7xl md:px-6">
+          <span className="md:hidden">
+            <BrandLogo size="md" />
+          </span>
           <div className="ml-auto flex items-center gap-2">
             <Link
               href="/matches"

@@ -141,7 +141,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navigation principale"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 md:hidden"
       style={{ paddingBottom: 'calc(0.6rem + var(--safe-bottom))' }}
     >
       <ul

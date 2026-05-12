@@ -128,7 +128,7 @@ export default async function MatchesPage({
             <span className="live-dot inline-block h-2 w-2 rounded-full bg-danger" aria-hidden />
             Événement en cours
           </h2>
-          <ul className="grid gap-3">
+          <ul className="grid gap-3 md:grid-cols-2">
             {live.map((m) => {
               const pa = playerMap[m.playerAId];
               const pb = playerMap[m.playerBId];
@@ -162,7 +162,7 @@ export default async function MatchesPage({
             Aucun match ne correspond à ce filtre.
           </div>
         ) : (
-          <ul className="grid gap-3">
+          <ul className="grid gap-3 md:grid-cols-2">
             {upcoming.map((m) => {
               const pa = playerMap[m.playerAId];
               const pb = playerMap[m.playerBId];
