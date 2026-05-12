@@ -1,162 +1,112 @@
-import Link from 'next/link';
-import { requireUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { clearSessionCookie, requireUser } from '@/lib/auth';
 import { getUser } from '@/lib/users';
-import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
+import { listUserBets } from '@/lib/bets';
+import { getMatch } from '@/lib/matches';
+import { getPlayer } from '@/lib/players';
+import { listNotifications } from '@/lib/notifications';
 import {
   cachedGetLeaderboard as getLeaderboard,
   cachedHasReceivedTodayBonus as hasReceivedTodayBonus,
-  cachedListMatches,
-  cachedListPlayers,
-  cachedListUserBets,
 } from '@/lib/cache';
+import { DashboardClient } from '@/components/DashboardClient';
+import type { ResultPayload } from '@/components/ResultModal';
+
+async function logout() {
+  'use server';
+  await clearSessionCookie();
+  redirect('/login');
+}
 
 export default async function DashboardPage() {
   const session = await requireUser();
-  const [user, allBets, bonus, leaderboard, allMatches, allPlayers] =
-    await Promise.all([
-      getUser(session.sub),
-      cachedListUserBets(session.sub),
-      hasReceivedTodayBonus(session.sub),
-      getLeaderboard(),
-      cachedListMatches(),
-      cachedListPlayers(),
-    ]);
+  const [user, bonus, leaderboard, recent] = await Promise.all([
+    getUser(session.sub),
+    hasReceivedTodayBonus(session.sub),
+    getLeaderboard(),
+    listNotifications(session.sub, 6),
+  ]);
   if (!user) return null;
-
-  const activeBets = allBets.filter((b) => b.status === 'PENDING');
-  const lastSettled = allBets
-    .filter((b) => b.status === 'WON' || b.status === 'LOST')
-    .slice(0, 5);
-
-  const matches = Object.fromEntries(allMatches.map((m) => [m.id, m]));
-  const players = Object.fromEntries(allPlayers.map((p) => [p.id, p]));
 
   const myRank = leaderboard.find((r) => r.userId === session.sub);
 
+  // Top 3 + voisins de classement
+  const topThree = leaderboard.slice(0, 3);
+  const aroundMe = myRank
+    ? leaderboard.slice(Math.max(0, myRank.rank - 2), myRank.rank + 1)
+    : [];
+
+  // Pré-charge la première notif "résultat" non lue → pop-up auto
+  const unreadResult = recent.find(
+    (n) => !n.read && (n.kind === 'BET_WON' || n.kind === 'BET_LOST'),
+  );
+  let modalPayload: ResultPayload | null = null;
+  if (unreadResult) {
+    const matchId = unreadResult.url?.split('/').pop() ?? null;
+    if (matchId) {
+      const match = await getMatch(matchId);
+      if (match) {
+        const bets = await listUserBets(user.id);
+        const bet =
+          bets.find(
+            (b) =>
+              b.matchId === matchId &&
+              (b.status === 'WON' || b.status === 'LOST'),
+          ) ?? null;
+        if (bet) {
+          const [picked, playerA, playerB] = await Promise.all([
+            getPlayer(bet.pickedPlayerId),
+            getPlayer(match.playerAId),
+            getPlayer(match.playerBId),
+          ]);
+          if (picked && playerA && playerB) {
+            modalPayload = {
+              kind: unreadResult.kind as 'BET_WON' | 'BET_LOST',
+              notificationId: unreadResult.id,
+              bet,
+              match,
+              picked,
+              playerA,
+              playerB,
+              scoreA: match.scoreA,
+              scoreB: match.scoreB,
+            };
+          }
+        }
+      }
+    }
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="card">
-          <div className="text-xs uppercase text-fg/50">Solde</div>
-          <div className="mt-2 text-3xl font-bold">
-            {fmtPoints(user.balance)} pts
-          </div>
-        </div>
-        <div className="card">
-          <div className="text-xs uppercase text-fg/50">Bonus quotidien</div>
-          <div className="mt-2 text-lg">
-            {bonus.received ? (
-              <span className="text-success">
-                ✓ Reçu ({fmtPoints(bonus.amount ?? 0)} pts)
-              </span>
-            ) : (
-              <span className="text-fg/60">
-                Pas encore distribué aujourd'hui
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="card">
-          <div className="text-xs uppercase text-fg/50">Classement</div>
-          <div className="mt-2 text-3xl font-bold">
-            {myRank ? `#${myRank.rank}` : '—'}
-          </div>
-          <div className="text-sm text-fg/60">
-            sur {leaderboard.length} joueurs
-          </div>
-        </div>
-      </div>
-
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Paris en cours</h2>
-        {activeBets.length === 0 ? (
-          <div className="card text-sm text-fg/60">
-            Aucun pari en cours.{' '}
-            <Link href="/matches" className="text-accent hover:underline">
-              Voir les matchs
-            </Link>
-          </div>
-        ) : (
-          <ul className="grid gap-3 md:grid-cols-2">
-            {activeBets.map((b) => {
-              const m = matches[b.matchId];
-              if (!m) return null;
-              const pa = players[m.playerAId];
-              const pb = players[m.playerBId];
-              const picked = players[b.pickedPlayerId];
-              if (!pa || !pb || !picked) return null;
-              return (
-                <li key={b.id} className="card">
-                  <div className="text-sm text-fg/60">
-                    {fmtPlayerName(pa)} vs {fmtPlayerName(pb)}
-                  </div>
-                  <div className="mt-1 font-medium">
-                    Pari sur {fmtPlayerName(picked)} @ {fmtOdds(b.oddsAtBet)}
-                  </div>
-                  <div className="mt-1 text-sm">
-                    Mise{' '}
-                    <span className="font-medium">{fmtPoints(b.stake)}</span> →
-                    gain potentiel{' '}
-                    <span className="font-medium text-success">
-                      {fmtPoints(b.potentialWin)}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-xs text-fg/50">
-                    Match : {fmtDateTime(m.startsAt)}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Derniers résultats</h2>
-        {lastSettled.length === 0 ? (
-          <div className="card text-sm text-fg/60">
-            Pas encore de résultats.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {lastSettled.map((b) => {
-              const m = matches[b.matchId];
-              if (!m) return null;
-              const pa = players[m.playerAId];
-              const pb = players[m.playerBId];
-              return (
-                <li
-                  key={b.id}
-                  className="card flex items-center justify-between text-sm"
-                >
-                  <div>
-                    <span className="text-fg/60">
-                      {pa?.firstName} vs {pb?.firstName}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-fg/60">
-                      Mise {fmtPoints(b.stake)}
-                    </span>
-                    <span
-                      className={
-                        b.status === 'WON'
-                          ? 'pill bg-success/20 text-success'
-                          : 'pill bg-danger/20 text-danger'
-                      }
-                    >
-                      {b.status === 'WON'
-                        ? `+${fmtPoints(b.payout ?? 0)}`
-                        : `-${fmtPoints(b.stake)}`}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </div>
+    <DashboardClient
+      logoutAction={logout}
+      modalPayload={modalPayload}
+      user={{
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        balance: user.balance,
+      }}
+      bonus={bonus}
+      myRank={myRank ?? null}
+      topThree={topThree.map((r) => ({
+        rank: r.rank,
+        userId: r.userId,
+        username: r.username,
+        balance: r.balance,
+        betsWon: r.betsWon,
+        betsLost: r.betsLost,
+      }))}
+      aroundMe={aroundMe.map((r) => ({
+        rank: r.rank,
+        userId: r.userId,
+        username: r.username,
+        balance: r.balance,
+        betsWon: r.betsWon,
+        betsLost: r.betsLost,
+      }))}
+      totalPlayers={leaderboard.length}
+    />
   );
 }
 

@@ -13,3 +13,5 @@ coverage/
 .idea/
 .vercel
 next-env.d.ts
+tsconfig.tsbuildinfo
+package-lock.json

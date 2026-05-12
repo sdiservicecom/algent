@@ -5,6 +5,8 @@ import bcrypt from 'bcryptjs';
 import { getSession, setSessionCookie, signSession } from '@/lib/auth';
 import { getUserByUsername } from '@/lib/users';
 import { checkLimit, limits } from '@/lib/ratelimit';
+import { AuthHero } from '@/components/AuthHero';
+import { LoginForm } from '@/components/LoginForm';
 
 async function login(formData: FormData) {
   'use server';
@@ -38,55 +40,19 @@ export default async function LoginPage({
   if (session) redirect('/dashboard');
   const sp = await searchParams;
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm items-center px-4">
-      <div className="w-full">
-        <h1 className="mb-6 text-2xl font-bold">Connexion</h1>
-        <form action={login} className="space-y-4">
-          <div>
-            <label className="label" htmlFor="username">
-              Pseudonyme
-            </label>
-            <input
-              id="username"
-              name="username"
-              required
-              autoFocus
-              className="input"
-              autoComplete="username"
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="password">
-              Mot de passe
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              className="input"
-              autoComplete="current-password"
-            />
-          </div>
-          {sp.error && (
-            <p className="text-sm text-danger">
-              {sp.error === 'invalid'
-                ? 'Pseudonyme ou mot de passe incorrect.'
-                : sp.error === 'ratelimit'
-                  ? 'Trop de tentatives — réessaie dans une minute.'
-                  : 'Champs manquants.'}
-            </p>
-          )}
-          <button className="btn-primary w-full" type="submit">
-            Se connecter
-          </button>
-        </form>
-        <p className="mt-6 text-center text-sm text-fg/60">
-          Pas de compte ?{' '}
-          <Link href="/register" className="text-accent hover:underline">
-            Créer un compte
-          </Link>
-        </p>
+    <main className="mx-auto flex min-h-[100dvh] max-w-sm flex-col">
+      <AuthHero />
+      <div className="flex-1 px-6 pb-8 pt-2">
+        <h1 className="mb-6 text-center text-3xl font-bold">Connexion</h1>
+        <LoginForm action={login} errorCode={sp.error} />
+        <div className="my-6 flex items-center gap-3 text-xs text-fg/40">
+          <span className="h-px flex-1 bg-border" />
+          <span className="uppercase">ou</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <Link href="/register" className="btn-outline-accent w-full">
+          Créer mon compte
+        </Link>
       </div>
     </main>
   );

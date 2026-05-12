@@ -5,6 +5,8 @@ import bcrypt from 'bcryptjs';
 import { getSession, setSessionCookie, signSession } from '@/lib/auth';
 import { UserError, createUser } from '@/lib/users';
 import { checkLimit, limits } from '@/lib/ratelimit';
+import { AuthHero } from '@/components/AuthHero';
+import { RegisterForm } from '@/components/RegisterForm';
 
 async function register(formData: FormData) {
   'use server';
@@ -68,100 +70,31 @@ export default async function RegisterPage({
   if (session) redirect('/dashboard');
   const sp = await searchParams;
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4">
-      <div className="w-full">
-        <h1 className="mb-6 text-2xl font-bold">Créer un compte</h1>
-        <form action={register} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label" htmlFor="firstName">
-                Prénom
-              </label>
-              <input
-                id="firstName"
-                name="firstName"
-                required
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="lastName">
-                Nom
-              </label>
-              <input id="lastName" name="lastName" required className="input" />
-            </div>
-          </div>
-          <div>
-            <label className="label" htmlFor="username">
-              Pseudonyme (3 caractères min.)
-            </label>
-            <input
-              id="username"
-              name="username"
-              required
-              minLength={3}
-              className="input"
-              autoComplete="username"
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="password">
-              Mot de passe (6 caractères min.)
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength={6}
-              className="input"
-              autoComplete="new-password"
-            />
-          </div>
-          {sp.error && (
-            <div className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm">
-              <p className="text-danger">{errorMessage(sp.error)}</p>
-              {sp.detail && (
-                <p className="mt-1 break-words font-mono text-xs text-fg/60">
-                  {sp.detail}
-                </p>
-              )}
-            </div>
-          )}
-          <button className="btn-primary w-full" type="submit">
-            Créer mon compte
-          </button>
-        </form>
-        <p className="mt-6 text-center text-sm text-fg/60">
-          Déjà un compte ?{' '}
-          <Link href="/login" className="text-accent hover:underline">
-            Se connecter
-          </Link>
+    <main className="mx-auto flex min-h-[100dvh] max-w-sm flex-col">
+      <AuthHero />
+      <div className="flex-1 px-6 pb-8 pt-2">
+        <h1 className="mb-6 text-center text-3xl font-bold">
+          Devenez un parieur&nbsp;!
+        </h1>
+        <RegisterForm
+          action={register}
+          errorCode={sp.error}
+          errorDetail={sp.detail}
+        />
+        <div className="my-6 flex items-center gap-3 text-xs text-fg/40">
+          <span className="h-px flex-1 bg-border" />
+          <span className="uppercase">ou</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <Link href="/login" className="btn-outline-accent w-full">
+          Se connecter
+        </Link>
+        <p className="mt-6 text-center text-xs text-fg/50">
+          SDI Bet est un site de paris fictif créé pour parier sur les matchs du
+          tournoi de ping-pong. Le site n'est pas lié au CSE de l'entreprise, ni
+          même à l'entreprise.
         </p>
       </div>
     </main>
   );
-}
-
-function errorMessage(code: string): string {
-  switch (code) {
-    case 'firstName':
-      return 'Prénom requis.';
-    case 'lastName':
-      return 'Nom requis.';
-    case 'username':
-      return 'Le pseudonyme doit faire 3 caractères minimum.';
-    case 'password':
-      return 'Le mot de passe doit faire 6 caractères minimum.';
-    case 'taken':
-      return 'Ce pseudonyme est déjà pris.';
-    case 'ratelimit':
-      return 'Trop de créations de compte — réessaie dans 10 minutes.';
-    case 'server':
-      return 'Erreur serveur — vérifie que Vercel KV est bien connecté au projet (variables KV_*).';
-    case 'session':
-      return 'Erreur de session — vérifie que la variable AUTH_SECRET est définie sur Vercel.';
-    default:
-      return 'Erreur inconnue.';
-  }
 }

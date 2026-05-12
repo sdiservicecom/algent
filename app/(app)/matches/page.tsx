@@ -12,13 +12,11 @@ import {
   type MatchStatus,
 } from '@/lib/types';
 
-const STATUS_FILTERS: Array<{ value: MatchStatus | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'Tous' },
-  { value: 'OPEN_FOR_BETS', label: 'Ouverts' },
-  { value: 'SCHEDULED', label: 'À venir' },
-  { value: 'LOCKED', label: 'Verrouillés' },
-  { value: 'SETTLED', label: 'Réglés' },
-  { value: 'CANCELLED', label: 'Annulés' },
+const STATUS_FILTERS: Array<{ value: MatchStatus | 'ALL'; label: string; icon: string }> = [
+  { value: 'ALL', label: 'Tous', icon: '📍' },
+  { value: 'IN_PROGRESS', label: 'En cours', icon: '🔴' },
+  { value: 'OPEN_FOR_BETS', label: 'Ouverts', icon: '⭐' },
+  { value: 'SETTLED', label: 'Réglés', icon: '✓' },
 ];
 
 export default async function MatchesPage({
@@ -38,10 +36,22 @@ export default async function MatchesPage({
   const playerMap = Object.fromEntries(players.map((p) => [p.id, p]));
 
   const filtered = matches.filter((m) => {
-    if (statusFilter !== 'ALL' && m.status !== statusFilter) return false;
+    if (statusFilter === 'IN_PROGRESS') {
+      if (m.status !== 'IN_PROGRESS' && m.status !== 'LOCKED') return false;
+    } else if (statusFilter !== 'ALL' && m.status !== statusFilter) {
+      return false;
+    }
     if (roundFilter !== 'ALL' && m.round !== roundFilter) return false;
     return true;
   });
+
+  // Sépare "live" et "à venir" pour la mise en page mobile
+  const live = filtered.filter(
+    (m) => m.status === 'IN_PROGRESS' || m.status === 'LOCKED',
+  );
+  const upcoming = filtered.filter(
+    (m) => m.status !== 'IN_PROGRESS' && m.status !== 'LOCKED',
+  );
 
   const buildHref = (next: { status?: string; round?: string }) => {
     const params = new URLSearchParams();
@@ -54,34 +64,42 @@ export default async function MatchesPage({
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Matchs</h1>
+    <div className="space-y-5">
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Matchs</h1>
+      </header>
 
-      <div className="flex flex-wrap gap-2 text-xs">
+      {/* Filtres status */}
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {STATUS_FILTERS.map((f) => {
-          const active = statusFilter === f.value;
+          const active =
+            statusFilter === f.value ||
+            (f.value === 'IN_PROGRESS' && statusFilter === ('LOCKED' as MatchStatus));
           return (
             <Link
               key={f.value}
               href={buildHref({ status: f.value })}
-              className={`rounded-full border px-3 py-1 transition ${
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 active
-                  ? 'border-accent bg-accent text-white'
-                  : 'border-border bg-surface text-fg/70 hover:border-accent hover:text-accent'
+                  ? 'bg-accent text-black'
+                  : 'bg-white/8 text-fg/70 hover:bg-white/15 hover:text-fg'
               }`}
             >
+              <span aria-hidden>{f.icon}</span>
               {f.label}
             </Link>
           );
         })}
       </div>
-      <div className="flex flex-wrap gap-2 text-xs">
+
+      {/* Filtres phase */}
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 text-xs">
         <Link
           href={buildHref({ round: 'ALL' })}
-          className={`rounded-full border px-3 py-1 transition ${
+          className={`shrink-0 rounded-full px-3 py-1 transition ${
             roundFilter === 'ALL'
-              ? 'border-accent bg-accent text-white'
-              : 'border-border bg-surface text-fg/70 hover:border-accent hover:text-accent'
+              ? 'bg-accent/15 text-accent'
+              : 'bg-white/5 text-fg/60 hover:text-fg'
           }`}
         >
           Toutes phases
@@ -92,10 +110,10 @@ export default async function MatchesPage({
             <Link
               key={r}
               href={buildHref({ round: r })}
-              className={`rounded-full border px-3 py-1 transition ${
+              className={`shrink-0 rounded-full px-3 py-1 transition ${
                 active
-                  ? 'border-accent bg-accent text-white'
-                  : 'border-border bg-surface text-fg/70 hover:border-accent hover:text-accent'
+                  ? 'bg-accent/15 text-accent'
+                  : 'bg-white/5 text-fg/60 hover:text-fg'
               }`}
             >
               {MATCH_ROUND_LABEL[r]}
@@ -104,30 +122,66 @@ export default async function MatchesPage({
         })}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="card text-sm text-fg/60">
-          Aucun match ne correspond à ce filtre.
-        </div>
-      ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
-          {filtered.map((m) => {
-            const pa = playerMap[m.playerAId];
-            const pb = playerMap[m.playerBId];
-            const winner = m.winnerId ? (playerMap[m.winnerId] ?? null) : null;
-            if (!pa || !pb) return null;
-            return (
-              <MatchCard
-                key={m.id}
-                match={m}
-                pa={pa}
-                pb={pb}
-                winner={winner}
-                viewerUserId={session.sub}
-              />
-            );
-          })}
-        </ul>
+      {live.length > 0 && (
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg/70">
+            <span className="live-dot inline-block h-2 w-2 rounded-full bg-danger" aria-hidden />
+            Événement en cours
+          </h2>
+          <ul className="grid gap-3">
+            {live.map((m) => {
+              const pa = playerMap[m.playerAId];
+              const pb = playerMap[m.playerBId];
+              const winner = m.winnerId ? (playerMap[m.winnerId] ?? null) : null;
+              if (!pa || !pb) return null;
+              return (
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  pa={pa}
+                  pb={pb}
+                  winner={winner}
+                  viewerUserId={session.sub}
+                />
+              );
+            })}
+          </ul>
+        </section>
       )}
+
+      <section>
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg/70">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M16 3v4M8 3v4M3 10h18" />
+          </svg>
+          Match à venir
+        </h2>
+        {upcoming.length === 0 ? (
+          <div className="card text-sm text-fg/60">
+            Aucun match ne correspond à ce filtre.
+          </div>
+        ) : (
+          <ul className="grid gap-3">
+            {upcoming.map((m) => {
+              const pa = playerMap[m.playerAId];
+              const pb = playerMap[m.playerBId];
+              const winner = m.winnerId ? (playerMap[m.winnerId] ?? null) : null;
+              if (!pa || !pb) return null;
+              return (
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  pa={pa}
+                  pb={pb}
+                  winner={winner}
+                  viewerUserId={session.sub}
+                />
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

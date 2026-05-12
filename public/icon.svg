@@ -1,5 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="96" fill="#275250"/>
-  <circle cx="256" cy="256" r="148" fill="none" stroke="#3ea663" stroke-width="32"/>
-  <text x="256" y="298" font-family="system-ui, sans-serif" font-size="220" font-weight="700" fill="#ffffff" text-anchor="middle">A</text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a2a1c"/>
+      <stop offset="100%" stop-color="#04100c"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <circle cx="256" cy="210" r="92" fill="#facc15"/>
+  <circle cx="220" cy="180" r="30" fill="#fde68a"/>
+  <text x="256" y="420" font-family="system-ui, sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">SDI <tspan fill="#4ade80">Bet</tspan></text>
 </svg>

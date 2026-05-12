@@ -1,11 +1,11 @@
 {
-  "name": "Algent — Tournoi virtuel",
-  "short_name": "Algent",
-  "description": "Application interne de paris virtuels pour le tournoi.",
+  "name": "SDI Bet — Le pari du tournoi",
+  "short_name": "SDI Bet",
+  "description": "SDI Bet — site de paris fictif pour le tournoi de ping-pong.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#275250",
+  "background_color": "#04100c",
+  "theme_color": "#04100c",
   "lang": "fr",
   "icons": [
     {
