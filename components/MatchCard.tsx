@@ -210,14 +210,17 @@ function PlayerSlot({
   onPick,
   stakePct,
 }: SlotProps) {
-  // Favori du marché si >= 50% des mises sur ce côté.
+  // Le côté qui draine le plus de mises (ou la plus petite cote en %
+  // implicite) : sert uniquement à colorer la barre de pourcentage en
+  // dessous — pas la pilule de cote, sinon le favori a l'air pré-coché.
   const isFav = stakePct != null && stakePct >= 50;
 
-  // Style de la pilule :
-  //  - settled  → vert plein si gagnant, grisé barré sinon
-  //  - picked   → vert plein "glow"
-  //  - favori   → vert plein
-  //  - défaut   → bordure verte + texte vert
+  // Style de la pilule de cote :
+  //  - settled gagnant → vert plein
+  //  - settled perdant → grisé barré
+  //  - picked          → vert plein "glow" (= état actif de sélection)
+  //  - par défaut      → bordure verte + texte vert, fond transparent
+  // → un match neuf est donc affiché SANS aucun côté pré-sélectionné.
   const pillBase =
     'inline-flex items-center justify-center rounded-full px-5 py-1 text-sm font-semibold transition';
   const pillTone = settled
@@ -226,9 +229,7 @@ function PlayerSlot({
       : 'border border-fg/15 text-fg/30 line-through'
     : picked
       ? 'bg-accent text-black shadow-glow-soft'
-      : isFav
-        ? 'bg-accent text-black'
-        : 'border border-accent/60 bg-transparent text-accent';
+      : 'border border-accent/60 bg-transparent text-accent hover:bg-accent/10';
 
   const oddsButton = settled ? (
     <span className={`${pillBase} ${pillTone}`}>{fmtOdds(odds)}</span>

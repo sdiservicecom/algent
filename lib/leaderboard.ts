@@ -14,7 +14,12 @@ export interface LeaderboardEntry {
 }
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  const users = (await listUsers()).filter((u) => u.role === 'USER');
+  // On inclut tous les comptes (USER + ADMIN) : un admin parie comme tout
+  // le monde, il doit apparaitre dans le classement. L'ancien filtre
+  // .filter(role === 'USER') faisait disparaître le premier user inscrit
+  // (auto-promu admin par createUser) et tous les autres promus depuis
+  // l'admin.
+  const users = await listUsers();
 
   const stats = await Promise.all(
     users.map(async (u) => {
