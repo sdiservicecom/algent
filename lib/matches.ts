@@ -66,7 +66,10 @@ export async function createMatch(input: {
     playerAId: input.playerAId,
     playerBId: input.playerBId,
     startsAt: startsAtIso,
-    status: 'SCHEDULED',
+    // Par défaut, un match nouvellement créé est immédiatement ouvert
+    // aux paris. L'admin peut le verrouiller / annuler via la page
+    // détail, mais on évite la friction du "Ouvrir aux paris" oublié.
+    status: 'OPEN_FOR_BETS',
     winnerId: '',
     round: input.round ?? '',
     bracketSlot: input.bracketSlot ?? '',

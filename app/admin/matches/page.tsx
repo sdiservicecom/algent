@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
-import { createMatch, deleteMatch, listMatches as rawListMatches } from '@/lib/matches';
+import {
+  createMatch,
+  deleteMatch,
+  listMatches as rawListMatches,
+  transitionMatchStatus,
+} from '@/lib/matches';
 import {
   bumpCache,
   cachedListMatches as listMatches,
@@ -58,6 +63,30 @@ async function purgeFinishedAction() {
   redirect(`/admin/matches?purged=${targets.length}`);
 }
 
+async function openAllScheduledAction() {
+  'use server';
+  const session = await requireAdmin();
+  const matches = await rawListMatches();
+  const targets = matches.filter((m) => m.status === 'SCHEDULED');
+  for (const m of targets) {
+    try {
+      await transitionMatchStatus(m.id, 'OPEN_FOR_BETS');
+    } catch {
+      /* ignore les transitions invalides — on continue */
+    }
+  }
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_OPEN',
+    metadata: { bulk: true, count: targets.length },
+  });
+  bumpCache('matches');
+  revalidatePath('/admin/matches');
+  revalidatePath('/matches');
+  redirect(`/admin/matches?opened=${targets.length}`);
+}
+
 async function createMatchAction(formData: FormData) {
   'use server';
   await requireAdmin();
@@ -96,6 +125,7 @@ export default async function AdminMatchesPage({
     ok?: string;
     purged?: string;
     deleted?: string;
+    opened?: string;
   }>;
 }) {
   await requireAdmin();
@@ -108,20 +138,35 @@ export default async function AdminMatchesPage({
   const finishedCount = matches.filter(
     (m) => m.status === 'SETTLED' || m.status === 'CANCELLED',
   ).length;
+  const scheduledCount = matches.filter((m) => m.status === 'SCHEDULED').length;
 
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Matchs</h1>
-        {finishedCount > 0 && (
-          <ConfirmForm
-            action={purgeFinishedAction}
-            confirmText={`Supprimer définitivement les ${finishedCount} matchs réglés ou annulés ? Les paris associés sont remboursés et effacés. Irréversible.`}
-            buttonClassName="btn-danger text-sm"
-            buttonLabel={`Purger les ${finishedCount} matchs terminés`}
-          />
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {scheduledCount > 0 && (
+            <form action={openAllScheduledAction}>
+              <button type="submit" className="btn-primary text-sm">
+                Ouvrir aux paris ({scheduledCount})
+              </button>
+            </form>
+          )}
+          {finishedCount > 0 && (
+            <ConfirmForm
+              action={purgeFinishedAction}
+              confirmText={`Supprimer définitivement les ${finishedCount} matchs réglés ou annulés ? Les paris associés sont remboursés et effacés. Irréversible.`}
+              buttonClassName="btn-danger text-sm"
+              buttonLabel={`Purger les ${finishedCount} matchs terminés`}
+            />
+          )}
+        </div>
       </header>
+      {sp.opened && (
+        <div className="card border-success/40 text-sm text-success">
+          ✓ {sp.opened} match(s) ouverts aux paris.
+        </div>
+      )}
       {sp.purged && (
         <div className="card border-success/40 text-sm text-success">
           ✓ {sp.purged} matchs supprimés.

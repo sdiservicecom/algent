@@ -290,16 +290,31 @@ export default async function AdminMatchDetailPage({
       {(match.status === 'LOCKED' ||
         match.status === 'IN_PROGRESS' ||
         match.status === 'OPEN_FOR_BETS') && (
-        <LiveTracker
-          matchId={match.id}
-          initialScoreA={match.scoreA ?? 0}
-          initialScoreB={match.scoreB ?? 0}
-          initialOddsA={match.oddsA}
-          initialOddsB={match.oddsB}
-          labelA={fmtPlayerName(pa)}
-          labelB={fmtPlayerName(pb)}
-          setScoreAction={liveScore}
-        />
+        <>
+          <LiveTracker
+            matchId={match.id}
+            initialScoreA={match.scoreA ?? 0}
+            initialScoreB={match.scoreB ?? 0}
+            initialOddsA={match.oddsA}
+            initialOddsB={match.oddsB}
+            labelA={fmtPlayerName(pa)}
+            labelB={fmtPlayerName(pb)}
+            setScoreAction={liveScore}
+          />
+          <a
+            href={`/live/${match.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-outline-accent inline-flex w-full"
+          >
+            Ouvrir la vue grand écran
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M14 3h7v7" />
+              <path d="M5 12 21 3" />
+              <path d="M21 14v7H3V3h7" />
+            </svg>
+          </a>
+        </>
       )}
 
       {sp.ok && (

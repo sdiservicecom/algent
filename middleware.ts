@@ -5,6 +5,10 @@ import { jwtVerify } from 'jose';
 const COOKIE_NAME = 'algent_session';
 
 const PUBLIC_PATHS = ['/login', '/register'];
+// Préfixes publics : tout ce qui commence par "/live" est accessible sans
+// auth pour pouvoir afficher le tableau de bord du match sur une TV
+// ou un projecteur sans avoir à se connecter.
+const PUBLIC_PREFIXES = ['/live'];
 
 async function isAuthed(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -25,7 +29,8 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/cron') ||
     pathname === '/api/health' ||
-    PUBLIC_PATHS.some((p) => pathname === p)
+    PUBLIC_PATHS.some((p) => pathname === p) ||
+    PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
   ) {
     return NextResponse.next();
   }
