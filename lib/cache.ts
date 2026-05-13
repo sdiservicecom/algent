@@ -2,7 +2,7 @@ import { unstable_cache, revalidateTag } from 'next/cache';
 import { listMatches } from './matches';
 import { listPlayers } from './players';
 import { listUsers } from './users';
-import { getLeaderboard } from './leaderboard';
+import { getLeaderboard, getServiceLeaderboard } from './leaderboard';
 import { listUserBets } from './bets';
 import { listUserCombos } from './combos';
 import { listUserTransactions } from './wallet';
@@ -37,6 +37,12 @@ export const cachedListUsers = unstable_cache(
 export const cachedGetLeaderboard = unstable_cache(
   async () => getLeaderboard(),
   ['cache:leaderboard'],
+  { revalidate: 30, tags: ['leaderboard', 'users', 'matches'] },
+);
+
+export const cachedGetServiceLeaderboard = unstable_cache(
+  async () => getServiceLeaderboard(),
+  ['cache:service-leaderboard'],
   { revalidate: 30, tags: ['leaderboard', 'users', 'matches'] },
 );
 

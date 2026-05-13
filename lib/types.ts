@@ -39,6 +39,8 @@ export interface User {
   passwordHash: string;
   role: Role;
   balance: number;
+  /** Service / équipe (libellé libre) — alimente le 2e leaderboard. */
+  service: string | null;
   createdAt: string;
 }
 

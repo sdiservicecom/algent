@@ -1,21 +1,29 @@
+import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
-import { cachedGetLeaderboard as getLeaderboard } from '@/lib/cache';
+import {
+  cachedGetLeaderboard as getLeaderboard,
+  cachedGetServiceLeaderboard as getServiceLeaderboard,
+} from '@/lib/cache';
 import { AutoRefresh } from '@/components/AutoRefresh';
 import { LeaderboardPodium } from '@/components/leaderboard/LeaderboardPodium';
 import { LeaderboardList } from '@/components/leaderboard/LeaderboardList';
+import { ServiceLeaderboardList } from '@/components/leaderboard/ServiceLeaderboardList';
 
-export default async function LeaderboardPage() {
+type Tab = 'players' | 'services';
+
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await requireUser();
-  const rows = await getLeaderboard();
+  const sp = await searchParams;
+  const tab: Tab = sp.tab === 'services' ? 'services' : 'players';
 
-  // 1er / 2e / 3e — on les place en podium (1 au centre)
-  const podium = {
-    first: rows[0] ?? null,
-    second: rows[1] ?? null,
-    third: rows[2] ?? null,
-  };
-  // Tout le reste va dans la liste en dessous
-  const rest = rows.slice(3);
+  const [rows, services] = await Promise.all([
+    getLeaderboard(),
+    getServiceLeaderboard(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -26,24 +34,47 @@ export default async function LeaderboardPage() {
           <span aria-hidden>🏆</span>
           Leaderboard
         </h1>
-        <button
-          type="button"
-          aria-label="Trier"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/8 text-fg/70 transition hover:bg-white/15 hover:text-fg"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M7 4v16" />
-            <path d="M3 8l4-4 4 4" />
-            <path d="M17 20V4" />
-            <path d="M13 16l4 4 4-4" />
-          </svg>
-        </button>
       </header>
 
-      <LeaderboardPodium podium={podium} highlightUserId={session.sub} />
+      {/* Tabs Joueurs / Services */}
+      <div className="flex items-center gap-2">
+        <Link
+          href="/leaderboard"
+          className={`tab-pill ${
+            tab === 'players' ? 'tab-pill-active' : 'tab-pill-idle'
+          }`}
+        >
+          Joueurs
+        </Link>
+        <Link
+          href="/leaderboard?tab=services"
+          className={`tab-pill ${
+            tab === 'services' ? 'tab-pill-active' : 'tab-pill-idle'
+          }`}
+        >
+          Services
+        </Link>
+      </div>
 
-      {rest.length > 0 && (
-        <LeaderboardList rows={rest} highlightUserId={session.sub} />
+      {tab === 'players' ? (
+        <>
+          <LeaderboardPodium
+            podium={{
+              first: rows[0] ?? null,
+              second: rows[1] ?? null,
+              third: rows[2] ?? null,
+            }}
+            highlightUserId={session.sub}
+          />
+          {rows.slice(3).length > 0 && (
+            <LeaderboardList
+              rows={rows.slice(3)}
+              highlightUserId={session.sub}
+            />
+          )}
+        </>
+      ) : (
+        <ServiceLeaderboardList rows={services} />
       )}
     </div>
   );

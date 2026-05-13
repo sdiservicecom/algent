@@ -14,6 +14,7 @@ async function register(formData: FormData) {
   const lastName = String(formData.get('lastName') ?? '').trim();
   const username = String(formData.get('username') ?? '').trim();
   const password = String(formData.get('password') ?? '');
+  const service = String(formData.get('service') ?? '').trim();
 
   if (firstName.length < 1) return redirect('/register?error=firstName');
   if (lastName.length < 1) return redirect('/register?error=lastName');
@@ -31,6 +32,7 @@ async function register(formData: FormData) {
       lastName,
       username,
       passwordHash: await bcrypt.hash(password, 10),
+      service: service.length > 0 ? service : null,
     });
   } catch (e) {
     if (e instanceof UserError && e.code === 'USERNAME_TAKEN') {

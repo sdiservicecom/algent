@@ -33,6 +33,16 @@ export interface CreateUserInput {
   username: string;
   passwordHash: string;
   role?: Role;
+  service?: string | null;
+}
+
+const MAX_SERVICE_LEN = 60;
+
+function normalizeService(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const t = raw.trim();
+  if (t.length === 0) return null;
+  return t.slice(0, MAX_SERVICE_LEN);
 }
 
 export class UserError extends Error {
@@ -64,6 +74,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   const role: Role =
     input.role ?? (existingCount === 0 ? 'ADMIN' : 'USER');
   const createdAt = new Date().toISOString();
+  const service = normalizeService(input.service);
 
   await kv.hset(K.user(id), {
     firstName: input.firstName.trim(),
@@ -72,6 +83,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     passwordHash: input.passwordHash,
     role,
     balance: 0,
+    service: service ?? '',
     createdAt,
   });
   await kv.sadd(K.usersAll(), id);
@@ -88,6 +100,20 @@ export async function setUserRole(id: string, role: Role): Promise<void> {
   await kv.hset(K.user(id), { role });
 }
 
+/**
+ * Met à jour le service de l'utilisateur. Passe `null` ou une chaîne vide
+ * pour le retirer. Tronque à 60 caractères pour limiter le bruit.
+ */
+export async function setUserService(
+  id: string,
+  service: string | null,
+): Promise<void> {
+  const user = await getUser(id);
+  if (!user) throw new UserError('INVALID_INPUT');
+  const normalized = normalizeService(service);
+  await kv.hset(K.user(id), { service: normalized ?? '' });
+}
+
 export async function adjustUserBalance(
   id: string,
   delta: number,
@@ -100,6 +126,7 @@ export async function adjustUserBalance(
 }
 
 function parseUser(id: string, raw: Record<string, string | number>): User {
+  const rawService = raw.service != null ? String(raw.service).trim() : '';
   return {
     id,
     firstName: String(raw.firstName ?? ''),
@@ -108,6 +135,7 @@ function parseUser(id: string, raw: Record<string, string | number>): User {
     passwordHash: String(raw.passwordHash ?? ''),
     role: (raw.role as Role) ?? 'USER',
     balance: Number(raw.balance ?? 0),
+    service: rawService.length > 0 ? rawService : null,
     createdAt: String(raw.createdAt ?? ''),
   };
 }

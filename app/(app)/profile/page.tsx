@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { clearSessionCookie, requireUser } from '@/lib/auth';
-import { getUser } from '@/lib/users';
+import { bumpCache } from '@/lib/cache';
+import { getUser, setUserService } from '@/lib/users';
 import { listUserBets } from '@/lib/bets';
 import { getMatch } from '@/lib/matches';
 import { getPlayer } from '@/lib/players';
@@ -16,6 +18,16 @@ async function logout() {
   'use server';
   await clearSessionCookie();
   redirect('/login');
+}
+
+async function updateService(formData: FormData) {
+  'use server';
+  const session = await requireUser();
+  const raw = String(formData.get('service') ?? '');
+  await setUserService(session.sub, raw.length > 0 ? raw : null);
+  bumpCache('users', 'leaderboard');
+  revalidatePath('/profile');
+  revalidatePath('/leaderboard');
 }
 
 export default async function ProfilePage() {
@@ -78,12 +90,14 @@ export default async function ProfilePage() {
   return (
     <DashboardClient
       logoutAction={logout}
+      updateServiceAction={updateService}
       modalPayload={modalPayload}
       user={{
         username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
         balance: user.balance,
+        service: user.service,
       }}
       bonus={bonus}
       myRank={myRank ?? null}

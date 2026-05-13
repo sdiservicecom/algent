@@ -23,12 +23,14 @@ interface Props {
     firstName: string;
     lastName: string;
     balance: number;
+    service: string | null;
   };
   bonus: { received: boolean; amount: number | null };
   myRank: { rank: number; betsWon: number; betsLost: number } | null;
   topThree: RankRow[];
   aroundMe: RankRow[];
   totalPlayers: number;
+  updateServiceAction?: (formData: FormData) => Promise<void>;
 }
 
 const initials = (firstName: string, lastName: string) =>
@@ -63,6 +65,7 @@ export function DashboardClient({
   topThree,
   aroundMe,
   totalPlayers,
+  updateServiceAction,
 }: Props) {
   // Dédup le classement affiché : top 3 + voisins (en évitant doublons)
   const seen = new Set<string>();
@@ -108,6 +111,14 @@ export function DashboardClient({
 
       {/* Bouton bonus */}
       <BonusCTA initial={bonus} />
+
+      {/* Service / équipe — édition inline */}
+      {updateServiceAction && (
+        <ServiceEditor
+          current={user.service}
+          action={updateServiceAction}
+        />
+      )}
 
       {/* Question pour du pognon (placeholder) */}
       <QuestionCard />
@@ -204,6 +215,42 @@ export function DashboardClient({
       {/* Pop-up résultat (perte / gain) */}
       {modalPayload && <ResultModal payload={modalPayload} />}
     </div>
+  );
+}
+
+function ServiceEditor({
+  current,
+  action,
+}: {
+  current: string | null;
+  action: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <section className="rounded-3xl border border-border bg-surface/70 p-4">
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-fg/80">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M3 21V8l9-5 9 5v13" />
+          <path d="M9 21V12h6v9" />
+        </svg>
+        Mon service
+      </div>
+      <form action={action} className="flex items-center gap-2">
+        <input
+          name="service"
+          defaultValue={current ?? ''}
+          maxLength={60}
+          placeholder="ex. RH, IT, Compta…"
+          className="input flex-1"
+          autoComplete="organization"
+        />
+        <button type="submit" className="btn-primary !px-4 !py-2 text-sm">
+          Enregistrer
+        </button>
+      </form>
+      <p className="mt-2 text-xs text-fg/55">
+        Ton service est utilisé pour le classement par équipe.
+      </p>
+    </section>
   );
 }
 

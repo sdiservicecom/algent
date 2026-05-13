@@ -45,6 +45,13 @@ export function RegisterForm({ action, errorCode, errorDetail }: Props) {
         placeholder="Pseudonyme"
         autoComplete="username"
       />
+      <input
+        name="service"
+        className="input"
+        placeholder="Service / équipe (ex. RH, IT, Compta…)"
+        maxLength={60}
+        autoComplete="organization"
+      />
       <PasswordInput
         name="password"
         value={password}
