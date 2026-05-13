@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { PasswordInput } from './PasswordInput';
+import { ServiceSelect } from './ServiceSelect';
 
 interface Props {
   action: (formData: FormData) => Promise<void>;
@@ -45,12 +46,10 @@ export function RegisterForm({ action, errorCode, errorDetail }: Props) {
         placeholder="Pseudonyme"
         autoComplete="username"
       />
-      <input
+      <ServiceSelect
         name="service"
-        className="input"
-        placeholder="Service / équipe (ex. RH, IT, Compta…)"
-        maxLength={60}
-        autoComplete="organization"
+        value=""
+        placeholder="Service / équipe (optionnel)"
       />
       <PasswordInput
         name="password"

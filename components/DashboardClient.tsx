@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ResultModal, type ResultPayload } from './ResultModal';
 import { CoinIcon } from './CoinIcon';
 import { BonusCTA } from './BonusCTA';
+import { ServiceSelect } from './ServiceSelect';
 import { fmtPoints } from '@/lib/format';
 
 interface RankRow {
@@ -235,14 +236,13 @@ function ServiceEditor({
         Mon service
       </div>
       <form action={action} className="flex items-center gap-2">
-        <input
-          name="service"
-          defaultValue={current ?? ''}
-          maxLength={60}
-          placeholder="ex. RH, IT, Compta…"
-          className="input flex-1"
-          autoComplete="organization"
-        />
+        <div className="flex-1">
+          <ServiceSelect
+            name="service"
+            value={current ?? ''}
+            placeholder="Aucun service"
+          />
+        </div>
         <button type="submit" className="btn-primary !px-4 !py-2 text-sm">
           Enregistrer
         </button>
