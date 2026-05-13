@@ -81,7 +81,11 @@ export default async function MatchDetailPage({
 
   const tooLate =
     new Date(match.startsAt).getTime() - Date.now() < LOCK_BEFORE_START_MS;
-  const canBet = !myBet && match.status === 'OPEN_FOR_BETS' && !tooLate;
+  const isLive = match.status === 'IN_PROGRESS';
+  // Pari accepté soit en pré-match (hors fenêtre de verrouillage), soit en
+  // direct (IN_PROGRESS — la cote courante est pilotée par le LiveTracker).
+  const canBet =
+    !myBet && ((match.status === 'OPEN_FOR_BETS' && !tooLate) || isLive);
   const settled = match.status === 'SETTLED' && winner;
   const aIsWinner = settled && winner!.id === pa.id;
   const bIsWinner = settled && winner!.id === pb.id;
@@ -102,9 +106,33 @@ export default async function MatchDetailPage({
     <div className="space-y-6">
       <AutoRefresh intervalMs={liveOrLocked ? 5_000 : 30_000} />
       <header className="card">
-        <div className="text-xs uppercase text-fg/50">
-          {fmtDateTime(match.startsAt)}
+        <div className="flex items-center justify-between text-xs">
+          <span className="uppercase text-fg/50">
+            {fmtDateTime(match.startsAt)}
+          </span>
+          {isLive && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-danger">
+              <span
+                className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-danger"
+                aria-hidden
+              />
+              Live
+            </span>
+          )}
         </div>
+        {/* Score live (ou final) : centré en grand au-dessus de la
+            confrontation pour qu'on voit le compteur grimper en direct. */}
+        {(isLive || hasFinalScore) && (
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <span className="font-mono text-4xl font-extrabold leading-none sm:text-5xl">
+              {match.scoreA ?? 0}
+            </span>
+            <span className="text-2xl text-fg/35">–</span>
+            <span className="font-mono text-4xl font-extrabold leading-none sm:text-5xl">
+              {match.scoreB ?? 0}
+            </span>
+          </div>
+        )}
         <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
           <div
             className={`flex flex-col items-center gap-2 rounded-2xl border p-3 transition ${
@@ -203,14 +231,6 @@ export default async function MatchDetailPage({
                 style={{ width: `${ratioA * 100}%` }}
               />
             </div>
-          </div>
-        )}
-        {hasFinalScore && (
-          <div className="mt-3 text-center text-sm">
-            <span className="text-fg/60">Score final&nbsp;:</span>{' '}
-            <span className="font-mono font-semibold text-success">
-              {match.scoreA} – {match.scoreB}
-            </span>
           </div>
         )}
       </header>
