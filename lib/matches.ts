@@ -1,5 +1,9 @@
 import { K, kv, newId } from './kv';
-import { SCORE_BONUS_MULTIPLIER, computeInitialOdds } from './odds';
+import {
+  SCORE_BONUS_MULTIPLIER,
+  computeInitialOdds,
+  computeLiveOdds,
+} from './odds';
 import {
   MATCH_ROUNDS,
   type Bet,
@@ -72,6 +76,8 @@ export async function createMatch(input: {
     oddsB: odds.oddsB,
     totalStakeA: 0,
     totalStakeB: 0,
+    betCountA: 0,
+    betCountB: 0,
     createdAt,
   });
   await kv.zadd(K.matchesByTime(), {
@@ -298,6 +304,185 @@ async function propagateBracketWinner(prev: Match): Promise<void> {
   });
 }
 
+/**
+ * Réinitialise un match : rembourse les paris encore en attente, remet
+ * le status à SCHEDULED, vide score / winner / totaux. Utile pour annuler
+ * un règlement erroné ou rouvrir un match.
+ *
+ * Les paris déjà réglés (WON/LOST) NE SONT PAS touchés ici — utiliser
+ * cancelMatch si tu veux annuler propre côté wallet, ou deleteMatch
+ * pour effacer.
+ */
+export async function resetMatch(matchId: string): Promise<void> {
+  const match = await getMatch(matchId);
+  if (!match) throw new MatchError('MATCH_NOT_FOUND');
+
+  // Rembourse tous les paris PENDING (s'il y en a)
+  const pendingIds = (await kv.smembers(K.pendingBetsByMatch(matchId))) as
+    | string[]
+    | null;
+  for (const betId of pendingIds ?? []) {
+    const bet = await kv.get<Bet>(K.bet(betId));
+    if (!bet || bet.status !== 'PENDING') continue;
+    const updated: Bet = {
+      ...bet,
+      status: 'CANCELLED',
+      settledAt: new Date().toISOString(),
+    };
+    await kv.set(K.bet(betId), updated);
+    await applyWalletDelta(bet.userId, bet.stake, 'ADMIN_ADJUSTMENT', {
+      betId,
+      matchId,
+      metadata: { reason: 'MATCH_RESET' },
+    });
+    await Promise.all([
+      kv.del(K.pendingBetGuard(bet.userId, matchId)),
+      kv.srem(K.pendingBetsByMatch(matchId), betId),
+    ]);
+  }
+
+  // Remet les cotes "fraîches" (cote initiale par seed)
+  const [pa, pb] = await Promise.all([
+    getPlayer(match.playerAId),
+    getPlayer(match.playerBId),
+  ]);
+  const fresh =
+    pa && pb
+      ? computeInitialOdds(pa.seed, pb.seed)
+      : { oddsA: match.oddsA, oddsB: match.oddsB };
+
+  await kv.hset(K.match(matchId), {
+    status: 'SCHEDULED',
+    winnerId: '',
+    scoreA: '',
+    scoreB: '',
+    totalStakeA: 0,
+    totalStakeB: 0,
+    betCountA: 0,
+    betCountB: 0,
+    oddsA: fresh.oddsA,
+    oddsB: fresh.oddsB,
+  });
+  await pushSnapshot(matchId, {
+    oddsA: fresh.oddsA,
+    oddsB: fresh.oddsB,
+    totalStakeA: 0,
+    totalStakeB: 0,
+    reason: 'RESET',
+    createdAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Supprime définitivement un match et toutes ses données associées
+ * (snapshots, paris, index). Les paris déjà réglés sont supprimés mais
+ * les wallets transactions restent en historique côté users
+ * (intentionnel — la trace est utile pour l'audit).
+ *
+ * Si le match a des paris en attente, on les annule (rembourse) avant
+ * la suppression pour ne pas léser les utilisateurs.
+ */
+export async function deleteMatch(matchId: string): Promise<void> {
+  const match = await getMatch(matchId);
+  if (!match) return;
+
+  // 1) Refund pending bets
+  const pendingIds = (await kv.smembers(K.pendingBetsByMatch(matchId))) as
+    | string[]
+    | null;
+  for (const betId of pendingIds ?? []) {
+    const bet = await kv.get<Bet>(K.bet(betId));
+    if (!bet) continue;
+    if (bet.status === 'PENDING') {
+      await applyWalletDelta(bet.userId, bet.stake, 'ADMIN_ADJUSTMENT', {
+        betId,
+        matchId,
+        metadata: { reason: 'MATCH_DELETED' },
+      });
+    }
+  }
+
+  // 2) Wipe all bets attached to this match
+  const allBetIds = (await kv.zrange(K.betsByMatch(matchId), 0, -1)) as string[];
+  for (const betId of allBetIds) {
+    const bet = await kv.get<Bet>(K.bet(betId));
+    if (bet) {
+      await Promise.all([
+        kv.del(K.bet(betId)),
+        kv.zrem(K.betsByUser(bet.userId), betId),
+        kv.del(K.pendingBetGuard(bet.userId, matchId)),
+      ]);
+    }
+  }
+  await Promise.all([
+    kv.del(K.betsByMatch(matchId)),
+    kv.del(K.pendingBetsByMatch(matchId)),
+    kv.del(K.oddsSnapshots(matchId)),
+  ]);
+
+  // 3) Drop the match itself
+  await Promise.all([
+    kv.del(K.match(matchId)),
+    kv.zrem(K.matchesByTime(), matchId),
+  ]);
+}
+
+/**
+ * Met à jour le score courant d'un match en cours (LOCKED → IN_PROGRESS si
+ * besoin) et recalcule les cotes "live" en conséquence. Utilisé par le
+ * Live Tracker côté admin pour ajouter des points sur le pouce.
+ */
+export async function setMatchScore(
+  matchId: string,
+  scoreA: number,
+  scoreB: number,
+): Promise<void> {
+  const match = await getMatch(matchId);
+  if (!match) throw new MatchError('MATCH_NOT_FOUND');
+  if (
+    match.status !== 'LOCKED' &&
+    match.status !== 'IN_PROGRESS' &&
+    match.status !== 'OPEN_FOR_BETS'
+  ) {
+    throw new MatchError('INVALID_TRANSITION');
+  }
+  const a = Math.max(0, Math.floor(scoreA));
+  const b = Math.max(0, Math.floor(scoreB));
+
+  // Passe à IN_PROGRESS si on est encore avant le coup d'envoi.
+  if (match.status === 'OPEN_FOR_BETS') {
+    await transitionMatchStatus(matchId, 'LOCKED');
+    await transitionMatchStatus(matchId, 'IN_PROGRESS');
+  } else if (match.status === 'LOCKED') {
+    await transitionMatchStatus(matchId, 'IN_PROGRESS');
+  }
+
+  // Recalcule des cotes "live" — pondération seed × (1 + score).
+  const [pa, pb] = await Promise.all([
+    getPlayer(match.playerAId),
+    getPlayer(match.playerBId),
+  ]);
+  const odds =
+    pa && pb
+      ? computeLiveOdds({ seedA: pa.seed, seedB: pb.seed, scoreA: a, scoreB: b })
+      : { oddsA: match.oddsA, oddsB: match.oddsB };
+
+  await kv.hset(K.match(matchId), {
+    scoreA: a,
+    scoreB: b,
+    oddsA: odds.oddsA,
+    oddsB: odds.oddsB,
+  });
+  await pushSnapshot(matchId, {
+    oddsA: odds.oddsA,
+    oddsB: odds.oddsB,
+    totalStakeA: match.totalStakeA,
+    totalStakeB: match.totalStakeB,
+    reason: 'LIVE_SCORE',
+    createdAt: new Date().toISOString(),
+  });
+}
+
 export async function cancelMatch(matchId: string): Promise<void> {
   const match = await getMatch(matchId);
   if (!match) throw new MatchError('MATCH_NOT_FOUND');
@@ -327,7 +512,12 @@ export async function cancelMatch(matchId: string): Promise<void> {
     ]);
   }
 
-  await kv.hset(K.match(matchId), { status: 'CANCELLED' });
+  await kv.hset(K.match(matchId), {
+    status: 'CANCELLED',
+    // Les paris ont été remboursés, plus aucun parieur "actif" sur ce match.
+    betCountA: 0,
+    betCountB: 0,
+  });
 
   // Annule la jambe correspondante dans les paris combinés (cote neutre 1.0)
   await resolveCombosForMatch(matchId, null, true);
@@ -438,6 +628,8 @@ function parseMatch(id: string, raw: Record<string, string | number>): Match {
     oddsB: Number(raw.oddsB ?? 0),
     totalStakeA: Number(raw.totalStakeA ?? 0),
     totalStakeB: Number(raw.totalStakeB ?? 0),
+    betCountA: Number(raw.betCountA ?? 0),
+    betCountB: Number(raw.betCountB ?? 0),
     createdAt: String(raw.createdAt ?? ''),
   };
 }

@@ -2,18 +2,61 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
-import { createMatch } from '@/lib/matches';
+import { createMatch, deleteMatch, listMatches as rawListMatches } from '@/lib/matches';
 import {
   bumpCache,
   cachedListMatches as listMatches,
   cachedListPlayers as listPlayers,
 } from '@/lib/cache';
+import { logAudit } from '@/lib/audit';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import {
   MATCH_ROUNDS,
   MATCH_ROUND_LABEL,
   type MatchRound,
 } from '@/lib/types';
+import { ConfirmForm } from '@/components/admin/ConfirmForm';
+
+async function deleteMatchAction(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  await deleteMatch(id);
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_DELETE',
+    targetId: id,
+  });
+  bumpCache('matches', 'leaderboard', 'users');
+  revalidatePath('/admin/matches');
+  revalidatePath('/matches');
+  revalidatePath('/bracket');
+}
+
+async function purgeFinishedAction() {
+  'use server';
+  const session = await requireAdmin();
+  const matches = await rawListMatches();
+  const targets = matches.filter(
+    (m) => m.status === 'SETTLED' || m.status === 'CANCELLED',
+  );
+  for (const m of targets) {
+    await deleteMatch(m.id);
+  }
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_PURGE_FINISHED',
+    metadata: { count: targets.length },
+  });
+  bumpCache('matches', 'leaderboard', 'users');
+  revalidatePath('/admin/matches');
+  revalidatePath('/matches');
+  revalidatePath('/bracket');
+  revalidatePath('/leaderboard');
+  redirect(`/admin/matches?purged=${targets.length}`);
+}
 
 async function createMatchAction(formData: FormData) {
   'use server';
@@ -48,7 +91,12 @@ async function createMatchAction(formData: FormData) {
 export default async function AdminMatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; ok?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    ok?: string;
+    purged?: string;
+    deleted?: string;
+  }>;
 }) {
   await requireAdmin();
   const sp = await searchParams;
@@ -57,10 +105,33 @@ export default async function AdminMatchesPage({
     listMatches(),
   ]);
   const playerMap = Object.fromEntries(players.map((p) => [p.id, p]));
+  const finishedCount = matches.filter(
+    (m) => m.status === 'SETTLED' || m.status === 'CANCELLED',
+  ).length;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Matchs</h1>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">Matchs</h1>
+        {finishedCount > 0 && (
+          <ConfirmForm
+            action={purgeFinishedAction}
+            confirmText={`Supprimer définitivement les ${finishedCount} matchs réglés ou annulés ? Les paris associés sont remboursés et effacés. Irréversible.`}
+            buttonClassName="btn-danger text-sm"
+            buttonLabel={`Purger les ${finishedCount} matchs terminés`}
+          />
+        )}
+      </header>
+      {sp.purged && (
+        <div className="card border-success/40 text-sm text-success">
+          ✓ {sp.purged} matchs supprimés.
+        </div>
+      )}
+      {sp.deleted && (
+        <div className="card border-success/40 text-sm text-success">
+          ✓ Match supprimé.
+        </div>
+      )}
 
       <form
         action={createMatchAction}
@@ -168,12 +239,21 @@ export default async function AdminMatchesPage({
                     </span>
                   </td>
                   <td data-label="Action" className="px-3 py-2 text-right">
-                    <Link
-                      href={`/admin/matches/${m.id}`}
-                      className="btn-secondary"
-                    >
-                      Gérer
-                    </Link>
+                    <div className="inline-flex items-center justify-end gap-2">
+                      <Link
+                        href={`/admin/matches/${m.id}`}
+                        className="btn-secondary text-xs"
+                      >
+                        Gérer
+                      </Link>
+                      <ConfirmForm
+                        action={deleteMatchAction}
+                        confirmText={`Supprimer ce match ? Les paris seront remboursés et effacés. Irréversible.`}
+                        buttonClassName="btn-danger text-xs"
+                        buttonLabel="Supprimer"
+                        hiddenFields={{ id: m.id }}
+                      />
+                    </div>
                   </td>
                 </tr>
               );

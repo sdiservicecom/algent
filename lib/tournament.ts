@@ -31,26 +31,35 @@ const round3 = (x: number) => Math.round(x * 1000) / 1000;
 const clamp = (x: number, min: number, max: number) =>
   Math.max(min, Math.min(max, x));
 
-/** Plafond dédié aux cotes "Gagnant du tournoi". On le sort du
- *  ODDS_MAX=15 (qui est fait pour les matchs 1v1) pour éviter que tous
- *  les outsiders se retrouvent collés à 15 quand le seed est élevé. */
-const TOURNAMENT_ODDS_MAX = 100;
+/** Cotes "Gagnant du tournoi" : plage 1.5 (top seed) → 15.0 (dernier seed).
+ *  On mappe simplement le rang du joueur (trié par seed asc) sur une
+ *  courbe puissance < 1, ce qui :
+ *   - garantit des cotes uniques (pas de tas à 15),
+ *   - garde le plafond à 15 demandé,
+ *   - donne un favori bien marqué et un étalement progressif.
+ */
+const TOURNAMENT_ODDS_MIN = 1.5;
+const TOURNAMENT_ODDS_MAX = 15;
+const TOURNAMENT_CURVE = 0.6; // < 1 → favori bien plus bas, étalement serré en haut
 
 export function computeTournamentOdds(
   players: Player[],
 ): Record<string, number> {
   if (players.length === 0) return {};
-  // Pondération seed^1.3 : creuse l'écart entre le 1er seed et les
-  // outsiders → plus de variance dans les cotes, on évite le tas à 15.
-  const weights = players.map((p) => ({
-    id: p.id,
-    w: 1 / Math.pow(Math.max(p.seed, 1), 1.3),
-  }));
-  const sum = weights.reduce((s, w) => s + w.w, 0);
+  // Tri stable par seed asc (seed = 1 → top favori). Les ex-aequo sur le seed
+  // partagent leur position et donc leur cote — c'est logique.
+  const sorted = [...players].sort(
+    (a, b) => a.seed - b.seed || a.id.localeCompare(b.id),
+  );
+  const n = sorted.length;
   const out: Record<string, number> = {};
-  for (const { id, w } of weights) {
-    const prob = w / sum;
-    out[id] = round3(clamp(1 / prob, ODDS_MIN, TOURNAMENT_ODDS_MAX));
+  for (let i = 0; i < n; i++) {
+    const t = n > 1 ? i / (n - 1) : 0;
+    const cote =
+      TOURNAMENT_ODDS_MIN +
+      (TOURNAMENT_ODDS_MAX - TOURNAMENT_ODDS_MIN) *
+        Math.pow(t, TOURNAMENT_CURVE);
+    out[sorted[i].id] = round3(clamp(cote, ODDS_MIN, TOURNAMENT_ODDS_MAX));
   }
   return out;
 }

@@ -59,13 +59,12 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
   const inBasket = hasMatch(match.id) && canBet;
   const live = match.status === 'IN_PROGRESS' || match.status === 'LOCKED';
 
-  // Pourcentage de chance de gagner, dérivé de la cote (probabilité
-  // implicite normalisée) : p = (1/cote) / (1/coteA + 1/coteB) * 100.
-  // Plus la cote est faible, plus le % est élevé.
-  const invA = match.oddsA > 0 ? 1 / match.oddsA : 0;
-  const invB = match.oddsB > 0 ? 1 / match.oddsB : 0;
-  const sumInv = invA + invB;
-  const pctA = sumInv > 0 ? Math.round((invA / sumInv) * 100) : null;
+  // Pourcentage de parieurs sur chaque côté (1 pari par user grâce au
+  // pendingBetGuard, donc betCountA/B = nombre de personnes qui ont misé
+  // sur A ou B).
+  const totalBets = match.betCountA + match.betCountB;
+  const pctA =
+    totalBets > 0 ? Math.round((match.betCountA / totalBets) * 100) : null;
   const pctB = pctA != null ? 100 - pctA : null;
 
   const handlePick = (player: Player, odds: number) => {

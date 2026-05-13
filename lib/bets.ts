@@ -126,6 +126,13 @@ export async function placeBet(input: PlaceBetInput): Promise<Bet> {
     'totalStakeB',
     isPickA ? 0 : input.stake,
   )) as number;
+  // Et le nombre de parieurs (1 par user grâce à pendingBetGuard) pour
+  // afficher le "% des parieurs sur ce côté" sur les cartes match.
+  await kv.hincrby(
+    K.match(input.matchId),
+    isPickA ? 'betCountA' : 'betCountB',
+    1,
+  );
 
   const [pa, pb] = await Promise.all([
     getPlayer(match.playerAId),

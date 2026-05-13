@@ -73,6 +73,10 @@ export interface Match {
   oddsB: number;
   totalStakeA: number;
   totalStakeB: number;
+  /** Nombre de parieurs (un par user grâce à pendingBetGuard) sur chaque côté.
+   *  Sert au % "qui a parié sur qui" affiché sous les cotes. */
+  betCountA: number;
+  betCountB: number;
   createdAt: string;
 }
 
@@ -184,6 +188,9 @@ export type AuditAction =
   | 'MATCH_CANCEL'
   | 'MATCH_CREATE'
   | 'MATCH_UPDATE'
+  | 'MATCH_RESET'
+  | 'MATCH_DELETE'
+  | 'MATCH_PURGE_FINISHED'
   | 'PLAYER_CREATE'
   | 'PLAYER_UPDATE'
   | 'PLAYER_DELETE'

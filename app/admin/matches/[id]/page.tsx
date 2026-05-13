@@ -3,12 +3,17 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import {
   cancelMatch,
+  deleteMatch,
   getMatch,
+  resetMatch,
+  setMatchScore,
   settleMatch,
   transitionMatchStatus,
   updateMatch,
 } from '@/lib/matches';
 import { listMatchBets } from '@/lib/bets';
+import { ConfirmForm } from '@/components/admin/ConfirmForm';
+import { LiveTracker } from '@/components/admin/LiveTracker';
 import { getPlayer, listPlayers } from '@/lib/players';
 import { getUser } from '@/lib/users';
 import { logAudit } from '@/lib/audit';
@@ -108,6 +113,55 @@ async function cancel(formData: FormData) {
   bumpCache('matches', 'leaderboard');
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
+}
+
+async function reset(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  await resetMatch(id);
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_RESET',
+    targetId: id,
+  });
+  bumpCache('matches', 'leaderboard', 'users');
+  revalidatePath(`/admin/matches/${id}`);
+  revalidatePath('/matches');
+  revalidatePath('/leaderboard');
+}
+
+async function destroy(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  await deleteMatch(id);
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_DELETE',
+    targetId: id,
+  });
+  bumpCache('matches', 'leaderboard', 'users');
+  revalidatePath('/admin/matches');
+  revalidatePath('/matches');
+  revalidatePath('/leaderboard');
+  redirect('/admin/matches?deleted=1');
+}
+
+async function liveScore(formData: FormData) {
+  'use server';
+  await requireAdmin();
+  const id = String(formData.get('id'));
+  const scoreA = Number(formData.get('scoreA'));
+  const scoreB = Number(formData.get('scoreB'));
+  if (!Number.isFinite(scoreA) || !Number.isFinite(scoreB)) return;
+  await setMatchScore(id, scoreA, scoreB);
+  bumpCache('matches');
+  revalidatePath(`/admin/matches/${id}`);
+  revalidatePath('/matches');
+  revalidatePath(`/matches/${id}`);
 }
 
 async function updateBasic(formData: FormData) {
@@ -214,7 +268,39 @@ export default async function AdminMatchDetailPage({
             </button>
           </form>
         )}
+        <form action={reset}>
+          <input type="hidden" name="id" value={match.id} />
+          <button
+            className="btn-ghost w-full"
+            type="submit"
+            title="Remet le match à SCHEDULED, rembourse les paris en attente, vide score/winner."
+          >
+            Réinitialiser
+          </button>
+        </form>
+        <ConfirmForm
+          action={destroy}
+          confirmText={`Supprimer ce match ? Tous les paris associés seront supprimés (les paris en attente seront remboursés). Action irréversible.`}
+          buttonClassName="btn-danger w-full"
+          buttonLabel="Supprimer le match"
+          hiddenFields={{ id: match.id }}
+        />
       </section>
+
+      {(match.status === 'LOCKED' ||
+        match.status === 'IN_PROGRESS' ||
+        match.status === 'OPEN_FOR_BETS') && (
+        <LiveTracker
+          matchId={match.id}
+          initialScoreA={match.scoreA ?? 0}
+          initialScoreB={match.scoreB ?? 0}
+          initialOddsA={match.oddsA}
+          initialOddsB={match.oddsB}
+          labelA={fmtPlayerName(pa)}
+          labelB={fmtPlayerName(pb)}
+          setScoreAction={liveScore}
+        />
+      )}
 
       {sp.ok && (
         <div className="card border-success/40 text-success">
