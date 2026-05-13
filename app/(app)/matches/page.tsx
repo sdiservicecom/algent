@@ -5,6 +5,7 @@ import {
   cachedListPlayers as listPlayers,
 } from '@/lib/cache';
 import { MatchCard } from '@/components/MatchCard';
+import { AutoRefresh } from '@/components/AutoRefresh';
 import {
   MATCH_ROUNDS,
   MATCH_ROUND_LABEL,
@@ -63,8 +64,15 @@ export default async function MatchesPage({
     return q ? `/matches?${q}` : '/matches';
   };
 
+  // Si un match est en cours / verrouillé, on rafraichit plus vite pour
+  // que les cotes live soient à jour pour tout le monde.
+  const hasLive = matches.some(
+    (m) => m.status === 'IN_PROGRESS' || m.status === 'LOCKED',
+  );
+
   return (
     <div className="space-y-5">
+      <AutoRefresh intervalMs={hasLive ? 5_000 : 30_000} />
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Matchs</h1>
       </header>

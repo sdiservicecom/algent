@@ -50,14 +50,19 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
   const { isPicked, hasMatch, toggle } = useBasket();
   const status = STATUS_LABEL[match.status];
 
+  const live = match.status === 'IN_PROGRESS';
+  const isLocked = match.status === 'LOCKED';
+  // Pari accepté soit en pré-match (OPEN_FOR_BETS, hors fenêtre de
+  // verrouillage), soit en direct (IN_PROGRESS — la cote courante est
+  // pilotée par le LiveTracker).
   const canBet =
-    match.status === 'OPEN_FOR_BETS' &&
-    new Date(match.startsAt).getTime() - Date.now() > 2 * 60 * 1000;
+    (match.status === 'OPEN_FOR_BETS' &&
+      new Date(match.startsAt).getTime() - Date.now() > 2 * 60 * 1000) ||
+    live;
 
   const matchLabel = `${pa.firstName} ${pa.lastName} vs ${pb.firstName} ${pb.lastName}`;
   const settled = match.status === 'SETTLED' && winner;
   const inBasket = hasMatch(match.id) && canBet;
-  const live = match.status === 'IN_PROGRESS' || match.status === 'LOCKED';
 
   // Pourcentage de parieurs sur chaque côté (1 pari par user grâce au
   // pendingBetGuard, donc betCountA/B = nombre de personnes qui ont misé
@@ -168,8 +173,15 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
       </div>
 
       <footer className="relative z-10 mt-3 flex items-center justify-between text-xs">
-        {canBet ? (
+        {canBet && live ? (
+          <span className="inline-flex items-center gap-1.5 font-semibold text-danger">
+            <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-danger" aria-hidden />
+            Pari en direct — touche une cote
+          </span>
+        ) : canBet ? (
           <span className="text-fg/50">Touche une cote pour parier</span>
+        ) : isLocked ? (
+          <span className="text-fg/50">Paris verrouillés — coup d'envoi imminent</span>
         ) : (
           <span />
         )}

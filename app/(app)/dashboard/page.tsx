@@ -14,6 +14,7 @@ import { TournamentContenders } from '@/components/home/TournamentContenders';
 import { LeaderboardMini } from '@/components/home/LeaderboardMini';
 import { RecentResultCard } from '@/components/home/RecentResultCard';
 import { BonusCTA } from '@/components/BonusCTA';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 export default async function DashboardPage() {
   const session = await requireUser();
@@ -65,6 +66,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-2">
+      <AutoRefresh intervalMs={featuredLive ? 5_000 : 30_000} />
       {/* Bienvenue */}
       <section className="space-y-3">
         <h1 className="text-2xl font-bold">

@@ -11,6 +11,7 @@ import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import { BetForm } from '@/components/BetForm';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Sparkline } from '@/components/Sparkline';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 async function placeBetAction(formData: FormData) {
   'use server';
@@ -94,8 +95,12 @@ export default async function MatchDetailPage({
     myBet.scoreGuessA === match.scoreA &&
     myBet.scoreGuessB === match.scoreB;
 
+  const liveOrLocked =
+    match.status === 'IN_PROGRESS' || match.status === 'LOCKED';
+
   return (
     <div className="space-y-6">
+      <AutoRefresh intervalMs={liveOrLocked ? 5_000 : 30_000} />
       <header className="card">
         <div className="text-xs uppercase text-fg/50">
           {fmtDateTime(match.startsAt)}

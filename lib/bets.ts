@@ -40,10 +40,18 @@ export async function placeBet(input: PlaceBetInput): Promise<Bet> {
 
   const match = await getMatch(input.matchId);
   if (!match) throw new BetError('MATCH_NOT_FOUND');
-  if (match.status !== 'OPEN_FOR_BETS') throw new BetError('MATCH_NOT_OPEN');
+  // Statut acceptable :
+  //  - OPEN_FOR_BETS : pari classique avant le match
+  //  - IN_PROGRESS   : pari en direct (live), avec la cote courante
+  //                    (mise à jour par le Live Tracker côté admin)
+  const isLive = match.status === 'IN_PROGRESS';
+  const isOpen = match.status === 'OPEN_FOR_BETS';
+  if (!isLive && !isOpen) throw new BetError('MATCH_NOT_OPEN');
+  // Le verrou temporel n'a de sens que pour les paris pré-match — un
+  // match LIVE est par définition déjà commencé.
   if (
-    new Date(match.startsAt).getTime() - Date.now() <
-    LOCK_BEFORE_START_MS
+    isOpen &&
+    new Date(match.startsAt).getTime() - Date.now() < LOCK_BEFORE_START_MS
   ) {
     throw new BetError('MATCH_STARTED');
   }
@@ -134,28 +142,44 @@ export async function placeBet(input: PlaceBetInput): Promise<Bet> {
     1,
   );
 
-  const [pa, pb] = await Promise.all([
-    getPlayer(match.playerAId),
-    getPlayer(match.playerBId),
-  ]);
-  if (pa && pb) {
-    const newOdds = recomputeOdds({
-      seedA: pa.seed,
-      seedB: pb.seed,
-      currentOddsA: match.oddsA,
-      totalStakeA: newTotalA,
-      totalStakeB: newTotalB,
-    });
-    await kv.hset(K.match(input.matchId), {
-      oddsA: newOdds.oddsA,
-      oddsB: newOdds.oddsB,
-    });
+  // Recalcule les cotes uniquement pour les paris OPEN_FOR_BETS — la part
+  // marché ne doit pas perturber les cotes live qui sont pilotées par le
+  // score actuel (LiveTracker côté admin).
+  if (isOpen) {
+    const [pa, pb] = await Promise.all([
+      getPlayer(match.playerAId),
+      getPlayer(match.playerBId),
+    ]);
+    if (pa && pb) {
+      const newOdds = recomputeOdds({
+        seedA: pa.seed,
+        seedB: pb.seed,
+        currentOddsA: match.oddsA,
+        totalStakeA: newTotalA,
+        totalStakeB: newTotalB,
+      });
+      await kv.hset(K.match(input.matchId), {
+        oddsA: newOdds.oddsA,
+        oddsB: newOdds.oddsB,
+      });
+      await pushSnapshot(input.matchId, {
+        oddsA: newOdds.oddsA,
+        oddsB: newOdds.oddsB,
+        totalStakeA: newTotalA,
+        totalStakeB: newTotalB,
+        reason: 'BET_PLACED',
+        createdAt: new Date().toISOString(),
+      });
+    }
+  } else {
+    // Live : on garde un snapshot pour l'historique mais sans toucher
+    // aux cotes (elles restent celles fixées par le LiveTracker).
     await pushSnapshot(input.matchId, {
-      oddsA: newOdds.oddsA,
-      oddsB: newOdds.oddsB,
+      oddsA: match.oddsA,
+      oddsB: match.oddsB,
       totalStakeA: newTotalA,
       totalStakeB: newTotalB,
-      reason: 'BET_PLACED',
+      reason: 'LIVE_BET',
       createdAt: new Date().toISOString(),
     });
   }
