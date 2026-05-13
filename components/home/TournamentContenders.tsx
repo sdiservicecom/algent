@@ -39,7 +39,7 @@ export function TournamentContenders({ players, odds, winnerId }: Props) {
   }
 
   return (
-    <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <ul className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {sorted.map((p) => {
         const c = odds[p.id];
         const isWinner = winnerId === p.id;

@@ -73,7 +73,28 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const session = await requireUser();
-  if (session.role !== 'ADMIN') redirect('/');
+  // Le rôle est lu en base — pas dans le JWT — pour qu'une promotion
+  // (ou rétrogradation) côté admin prenne effet immédiatement, sans que
+  // l'utilisateur ait à se reconnecter pour récupérer un cookie à jour.
+  const user = await getUser(session.sub);
+  if (!user || user.role !== 'ADMIN') redirect('/');
+
+  // Si le JWT contient encore l'ancien rôle (USER), on en émet un nouveau
+  // au passage pour que les checks ultérieurs basés sur le token soient
+  // également cohérents jusqu'à expiration.
+  if (session.role !== user.role) {
+    try {
+      const token = await signSession({
+        sub: user.id,
+        username: user.username,
+        role: user.role,
+      });
+      await setSessionCookie(token);
+    } catch {
+      /* refresh best-effort — la garde DB ci-dessus reste l'autorité */
+    }
+    return { ...session, role: user.role };
+  }
   return session;
 }
 
