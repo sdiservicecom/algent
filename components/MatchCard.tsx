@@ -143,7 +143,24 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
           stakePct={pctA}
         />
         <div className="flex flex-col items-center text-center">
-          {match.scoreA != null && match.scoreB != null ? (
+          {live ? (
+            // Match en cours : score live mis en avant. On affiche 0-0 par
+            // défaut si l'admin n'a pas encore ajouté de point.
+            <>
+              <span className="inline-flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-danger">
+                <span
+                  className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-danger"
+                  aria-hidden
+                />
+                Live
+              </span>
+              <span className="mt-1 font-mono text-2xl font-bold leading-none">
+                {match.scoreA ?? 0}
+                <span className="mx-1 text-fg/40">–</span>
+                {match.scoreB ?? 0}
+              </span>
+            </>
+          ) : match.scoreA != null && match.scoreB != null ? (
             <span className="font-mono text-lg font-bold">
               {match.scoreA} – {match.scoreB}
             </span>
