@@ -28,9 +28,25 @@ async function createPlayerAction(formData: FormData) {
     if (uploaded) photoUrl = uploaded;
   } catch (e) {
     if (e instanceof UploadError) {
-      return redirect(`/admin/players?error=upload-${e.code.toLowerCase()}`);
+      // Fallback gracieux : si l'admin a aussi collé une URL externe,
+      // on l'utilise plutôt que de bloquer la création.
+      if (pastedUrl) {
+        console.warn(
+          '[admin/players] upload failed, falling back to pasted URL:',
+          e.detail ?? e.code,
+        );
+        photoUrl = pastedUrl;
+      } else {
+        const detail = e.detail
+          ? `&detail=${encodeURIComponent(e.detail.slice(0, 200))}`
+          : '';
+        return redirect(
+          `/admin/players?error=upload-${e.code.toLowerCase()}${detail}`,
+        );
+      }
+    } else {
+      throw e;
     }
-    throw e;
   }
 
   try {
@@ -66,7 +82,7 @@ async function deletePlayerAction(formData: FormData) {
 export default async function AdminPlayersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; ok?: string }>;
+  searchParams: Promise<{ error?: string; ok?: string; detail?: string }>;
 }) {
   await requireAdmin();
   const sp = await searchParams;
@@ -127,9 +143,14 @@ export default async function AdminPlayersPage({
           </button>
         </div>
         {sp.error && (
-          <p className="md:col-span-6 text-sm text-danger">
-            {errorLabel(sp.error)}
-          </p>
+          <div className="md:col-span-6 text-sm text-danger">
+            <p>{errorLabel(sp.error)}</p>
+            {sp.detail && (
+              <p className="mt-1 break-words font-mono text-xs text-fg/60">
+                {sp.detail}
+              </p>
+            )}
+          </div>
         )}
         {sp.ok && (
           <p className="md:col-span-6 text-sm text-success">Joueur ajouté.</p>

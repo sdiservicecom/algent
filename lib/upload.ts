@@ -12,8 +12,11 @@ const ALLOWED_MIME = new Set([
 export class UploadError extends Error {
   constructor(
     public code: 'TOO_LARGE' | 'BAD_TYPE' | 'BLOB_NOT_CONFIGURED' | 'FAILED',
+    /** Message diagnostique récupéré du SDK Vercel Blob — utile pour
+     *  l'admin (logué + transmis à l'UI). */
+    public detail?: string,
   ) {
-    super(code);
+    super(detail ? `${code}: ${detail}` : code);
   }
 }
 
@@ -45,8 +48,13 @@ export async function uploadPlayerPhoto(
       addRandomSuffix: false,
     });
     return blob.url;
-  } catch {
-    throw new UploadError('FAILED');
+  } catch (e) {
+    // Log côté serveur (Vercel) pour que l'admin puisse diagnostiquer
+    // (token invalide, store supprimé, quota dépassé, etc.) — le SDK
+    // Vercel Blob est très laconique côté client.
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error('[uploadPlayerPhoto] put() failed:', detail);
+    throw new UploadError('FAILED', detail);
   }
 }
 

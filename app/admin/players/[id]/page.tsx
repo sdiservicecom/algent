@@ -44,11 +44,25 @@ async function updatePlayerAction(formData: FormData) {
       }
     } catch (e) {
       if (e instanceof UploadError) {
-        return redirect(
-          `/admin/players/${id}?error=upload-${e.code.toLowerCase()}`,
-        );
+        // Fallback : si on a aussi une URL externe, on l'utilise plutôt
+        // que de bloquer l'édition.
+        if (pastedUrl) {
+          console.warn(
+            '[admin/players/edit] upload failed, falling back to pasted URL:',
+            e.detail ?? e.code,
+          );
+          photoUrl = pastedUrl;
+        } else {
+          const detail = e.detail
+            ? `&detail=${encodeURIComponent(e.detail.slice(0, 200))}`
+            : '';
+          return redirect(
+            `/admin/players/${id}?error=upload-${e.code.toLowerCase()}${detail}`,
+          );
+        }
+      } else {
+        throw e;
       }
-      throw e;
     }
   }
 
@@ -82,7 +96,7 @@ export default async function AdminPlayerEditPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; ok?: string }>;
+  searchParams: Promise<{ error?: string; ok?: string; detail?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
@@ -212,9 +226,14 @@ export default async function AdminPlayerEditPage({
           </button>
         </div>
         {sp.error && (
-          <p className="md:col-span-6 text-sm text-danger">
-            {errorLabel(sp.error)}
-          </p>
+          <div className="md:col-span-6 text-sm text-danger">
+            <p>{errorLabel(sp.error)}</p>
+            {sp.detail && (
+              <p className="mt-1 break-words font-mono text-xs text-fg/60">
+                {sp.detail}
+              </p>
+            )}
+          </div>
         )}
         {sp.ok && (
           <p className="md:col-span-6 text-sm text-success">
