@@ -31,16 +31,26 @@ const round3 = (x: number) => Math.round(x * 1000) / 1000;
 const clamp = (x: number, min: number, max: number) =>
   Math.max(min, Math.min(max, x));
 
+/** Plafond dédié aux cotes "Gagnant du tournoi". On le sort du
+ *  ODDS_MAX=15 (qui est fait pour les matchs 1v1) pour éviter que tous
+ *  les outsiders se retrouvent collés à 15 quand le seed est élevé. */
+const TOURNAMENT_ODDS_MAX = 100;
+
 export function computeTournamentOdds(
   players: Player[],
 ): Record<string, number> {
   if (players.length === 0) return {};
-  const weights = players.map((p) => ({ id: p.id, w: 1 / p.seed }));
+  // Pondération seed^1.3 : creuse l'écart entre le 1er seed et les
+  // outsiders → plus de variance dans les cotes, on évite le tas à 15.
+  const weights = players.map((p) => ({
+    id: p.id,
+    w: 1 / Math.pow(Math.max(p.seed, 1), 1.3),
+  }));
   const sum = weights.reduce((s, w) => s + w.w, 0);
   const out: Record<string, number> = {};
   for (const { id, w } of weights) {
     const prob = w / sum;
-    out[id] = round3(clamp(1 / prob, ODDS_MIN, ODDS_MAX));
+    out[id] = round3(clamp(1 / prob, ODDS_MIN, TOURNAMENT_ODDS_MAX));
   }
   return out;
 }

@@ -29,6 +29,7 @@ export type TxType =
   | 'BET_PLACED'
   | 'BET_WON'
   | 'BET_LOST'
+  | 'QUIZ_WIN'
   | 'ADMIN_ADJUSTMENT';
 
 export interface User {

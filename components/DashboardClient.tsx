@@ -5,6 +5,7 @@ import { ResultModal, type ResultPayload } from './ResultModal';
 import { CoinIcon } from './CoinIcon';
 import { BonusCTA } from './BonusCTA';
 import { ServiceSelect } from './ServiceSelect';
+import { QuizCard, type QuizPlayerOption } from './QuizCard';
 import { fmtPoints } from '@/lib/format';
 
 interface RankRow {
@@ -32,6 +33,17 @@ interface Props {
   aroundMe: RankRow[];
   totalPlayers: number;
   updateServiceAction?: (formData: FormData) => Promise<void>;
+  /** True quand la page est rechargée juste après une sauvegarde de service
+   *  (URL ?saved=service) — sert à afficher un petit "✓ Service enregistré". */
+  serviceSaved?: boolean;
+  /** Données pour la carte quiz "Qui a gagné le dernier tournoi ?". */
+  quiz?: {
+    state: 'idle' | 'won' | 'lost';
+    tournamentSettled: boolean;
+    options: QuizPlayerOption[];
+    correctPlayerId: string | null;
+    reward: number;
+  };
 }
 
 const initials = (firstName: string, lastName: string) =>
@@ -67,6 +79,8 @@ export function DashboardClient({
   aroundMe,
   totalPlayers,
   updateServiceAction,
+  serviceSaved,
+  quiz,
 }: Props) {
   // Dédup le classement affiché : top 3 + voisins (en évitant doublons)
   const seen = new Set<string>();
@@ -118,11 +132,22 @@ export function DashboardClient({
         <ServiceEditor
           current={user.service}
           action={updateServiceAction}
+          justSaved={!!serviceSaved}
         />
       )}
 
-      {/* Question pour du pognon (placeholder) */}
-      <QuestionCard />
+      {/* Question pour du pognon — quiz dernier gagnant du tournoi */}
+      {quiz ? (
+        <QuizCard
+          initialState={quiz.state}
+          tournamentSettled={quiz.tournamentSettled}
+          options={quiz.options}
+          correctPlayerId={quiz.correctPlayerId}
+          reward={quiz.reward}
+        />
+      ) : (
+        <QuestionCard />
+      )}
 
       {/* Classement */}
       <section>
@@ -222,9 +247,11 @@ export function DashboardClient({
 function ServiceEditor({
   current,
   action,
+  justSaved,
 }: {
   current: string | null;
   action: (formData: FormData) => Promise<void>;
+  justSaved: boolean;
 }) {
   return (
     <section className="rounded-3xl border border-border bg-surface/70 p-4">
@@ -237,7 +264,10 @@ function ServiceEditor({
       </div>
       <form action={action} className="flex items-center gap-2">
         <div className="flex-1">
+          {/* `key` remonte le <select> uncontrolled à chaque changement de
+              `current` pour qu'il affiche la valeur fraichement sauvegardée. */}
           <ServiceSelect
+            key={current ?? '__empty__'}
             name="service"
             value={current ?? ''}
             placeholder="Aucun service"
@@ -247,6 +277,14 @@ function ServiceEditor({
           Enregistrer
         </button>
       </form>
+      {justSaved && (
+        <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-success">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+          Service enregistré.
+        </p>
+      )}
       <p className="mt-2 text-xs text-fg/55">
         Ton service est utilisé pour le classement par équipe.
       </p>

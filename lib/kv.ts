@@ -54,6 +54,10 @@ export const K = {
   dailyBonus: (userId: string, isoDate: string) =>
     `algent:bonus:${userId}:${isoDate}`,
 
+  /** État de la réponse du user au quiz courant (= une tentative max).
+   *  Valeur attendue: 'won' | 'lost'. */
+  quizAnswer: (userId: string) => `algent:quiz:answer:${userId}`,
+
   oddsSnapshots: (matchId: string) => `algent:odds:bymatch:${matchId}`,
 
   notification: (id: string) => `algent:notif:${id}`,
