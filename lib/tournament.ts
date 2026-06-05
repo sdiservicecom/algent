@@ -168,6 +168,95 @@ export async function listAllTournamentBets(): Promise<TournamentBet[]> {
   return bets.filter((b): b is TournamentBet => !!b);
 }
 
+/**
+ * Annule + rembourse un pari tournoi PENDING. À l'usage de l'admin
+ * lorsqu'un utilisateur se trompe ou veut récupérer sa mise avant le
+ * règlement. Lève si le pari est déjà réglé ou annulé.
+ */
+export async function cancelTournamentBet(betId: string): Promise<void> {
+  const bet = await kv.get<TournamentBet>(K.tournamentBet(betId));
+  if (!bet) throw new TournamentError('NOT_FOUND');
+  if (bet.status !== 'PENDING') {
+    throw new TournamentError('ALREADY_FINALIZED');
+  }
+  // Rembourse le stake
+  await applyWalletDelta(bet.userId, bet.stake, 'ADMIN_ADJUSTMENT', {
+    betId,
+    metadata: { reason: 'TOURNAMENT_BET_CANCELLED' },
+  });
+  const updated: TournamentBet = {
+    ...bet,
+    status: 'CANCELLED',
+    settledAt: new Date().toISOString(),
+  };
+  await kv.set(K.tournamentBet(betId), updated);
+  // Libère le guard "1 pari par user" pour que l'utilisateur puisse en
+  // reposer un s'il le souhaite (et le tournoi est encore OPEN).
+  await kv.del(K.tournamentBetGuard(bet.userId));
+}
+
+/**
+ * Modifie un pari tournoi PENDING : changer le pick et/ou la mise.
+ *  - Changer le pick : la cote est mise à jour avec la cote courante
+ *    du nouveau joueur (computeTournamentOdds).
+ *  - Changer la mise : la différence est appliquée au wallet de
+ *    l'utilisateur (plus de mise = débit, moins = remboursement).
+ *  - potentialWin est recalculé en conséquence.
+ *
+ * Si la mise change ET le pick change, on applique les deux dans le
+ * même appel.
+ */
+export async function updateTournamentBet(
+  betId: string,
+  input: { pickedPlayerId?: string; stake?: number },
+): Promise<TournamentBet> {
+  const bet = await kv.get<TournamentBet>(K.tournamentBet(betId));
+  if (!bet) throw new TournamentError('NOT_FOUND');
+  if (bet.status !== 'PENDING') {
+    throw new TournamentError('ALREADY_FINALIZED');
+  }
+
+  let newPickedId = bet.pickedPlayerId;
+  let newOdds = bet.oddsAtBet;
+  if (input.pickedPlayerId && input.pickedPlayerId !== bet.pickedPlayerId) {
+    const players = await listPlayers();
+    if (!players.find((p) => p.id === input.pickedPlayerId)) {
+      throw new TournamentError('INVALID_PLAYER');
+    }
+    const odds = computeTournamentOdds(players)[input.pickedPlayerId];
+    if (!odds) throw new TournamentError('INVALID_PLAYER');
+    newPickedId = input.pickedPlayerId;
+    newOdds = odds;
+  }
+
+  let newStake = bet.stake;
+  if (
+    typeof input.stake === 'number' &&
+    Number.isFinite(input.stake) &&
+    input.stake !== bet.stake
+  ) {
+    if (input.stake < MIN_STAKE || input.stake > MAX_STAKE_ABS) {
+      throw new TournamentError('STAKE_OUT_OF_BOUNDS');
+    }
+    const delta = input.stake - bet.stake; // >0 = débit supplémentaire, <0 = remboursement
+    await applyWalletDelta(bet.userId, -delta, 'ADMIN_ADJUSTMENT', {
+      betId,
+      metadata: { reason: 'TOURNAMENT_BET_STAKE_UPDATED', from: bet.stake, to: input.stake },
+    });
+    newStake = input.stake;
+  }
+
+  const updated: TournamentBet = {
+    ...bet,
+    pickedPlayerId: newPickedId,
+    stake: newStake,
+    oddsAtBet: newOdds,
+    potentialWin: Math.floor(newStake * newOdds),
+  };
+  await kv.set(K.tournamentBet(betId), updated);
+  return updated;
+}
+
 export async function settleTournament(winnerId: string) {
   const t = await getTournament();
   if (t.status === 'SETTLED' || t.status === 'CANCELLED') {
