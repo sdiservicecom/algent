@@ -1,10 +1,27 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import bcrypt from 'bcryptjs';
 import { requireAdmin } from '@/lib/auth';
-import { adjustUserBalance, getUser, setUserRole } from '@/lib/users';
+import {
+  adjustUserBalance,
+  getUser,
+  setUserPasswordHash,
+  setUserRole,
+} from '@/lib/users';
 import { bumpCache, cachedListUsers as listUsers } from '@/lib/cache';
 import { logAudit } from '@/lib/audit';
 import { fmtPoints } from '@/lib/format';
+import { ConfirmForm } from '@/components/admin/ConfirmForm';
+
+/** Mot de passe temporaire alphanumérique (12 chars, sans 0/O/I/l ambigus). */
+function generateTempPassword(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghijkmnpqrstuvwxyz';
+  const bytes = new Uint8Array(12);
+  globalThis.crypto.getRandomValues(bytes);
+  let out = '';
+  for (const b of bytes) out += alphabet[b % alphabet.length];
+  return out;
+}
 
 async function promote(formData: FormData) {
   'use server';
@@ -51,6 +68,29 @@ async function demote(formData: FormData) {
   revalidatePath('/admin/users');
 }
 
+async function resetPassword(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  const target = await getUser(id);
+  if (!target) return;
+  const temp = generateTempPassword();
+  const hash = await bcrypt.hash(temp, 10);
+  await setUserPasswordHash(id, hash);
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'USER_PASSWORD_RESET',
+    targetId: id,
+    targetLabel: target.username,
+  });
+  bumpCache('users');
+  revalidatePath('/admin/users');
+  redirect(
+    `/admin/users?resetUser=${encodeURIComponent(target.username)}&resetTemp=${encodeURIComponent(temp)}`,
+  );
+}
+
 async function adjust(formData: FormData) {
   'use server';
   const session = await requireAdmin();
@@ -82,7 +122,11 @@ async function adjust(formData: FormData) {
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    resetUser?: string;
+    resetTemp?: string;
+  }>;
 }) {
   const session = await requireAdmin();
   const sp = await searchParams;
@@ -100,6 +144,23 @@ export default async function AdminUsersPage({
               : sp.error === 'insufficient'
                 ? "Solde de l'utilisateur insuffisant pour ce retrait."
                 : 'Erreur — montant invalide.'}
+        </div>
+      )}
+      {sp.resetUser && sp.resetTemp && (
+        <div className="card border-accent/40 bg-accent/5">
+          <div className="text-sm font-semibold text-accent">
+            Nouveau mot de passe temporaire pour{' '}
+            <span className="font-mono">{sp.resetUser}</span>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="rounded-md bg-bg/60 px-3 py-2 font-mono text-base text-fg">
+              {sp.resetTemp}
+            </code>
+          </div>
+          <p className="mt-2 text-xs text-fg/65">
+            Partage-le et invite l'utilisateur à le changer depuis son
+            profil. Ce mot de passe ne sera plus jamais affiché ici.
+          </p>
         </div>
       )}
 
@@ -166,25 +227,34 @@ export default async function AdminUsersPage({
                     </form>
                   </td>
                   <td data-label="Action" className="px-3 py-2 text-right">
-                    {u.role === 'USER' ? (
-                      <form action={promote}>
-                        <input type="hidden" name="id" value={u.id} />
-                        <button className="btn-secondary" type="submit">
-                          Promouvoir admin
-                        </button>
-                      </form>
-                    ) : (
-                      <form action={demote}>
-                        <input type="hidden" name="id" value={u.id} />
-                        <button
-                          className="btn-secondary"
-                          type="submit"
-                          disabled={isMe}
-                        >
-                          Rétrograder
-                        </button>
-                      </form>
-                    )}
+                    <div className="inline-flex items-center justify-end gap-2">
+                      {u.role === 'USER' ? (
+                        <form action={promote}>
+                          <input type="hidden" name="id" value={u.id} />
+                          <button className="btn-secondary" type="submit">
+                            Promouvoir admin
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={demote}>
+                          <input type="hidden" name="id" value={u.id} />
+                          <button
+                            className="btn-secondary"
+                            type="submit"
+                            disabled={isMe}
+                          >
+                            Rétrograder
+                          </button>
+                        </form>
+                      )}
+                      <ConfirmForm
+                        action={resetPassword}
+                        confirmText={`Générer un nouveau mot de passe temporaire pour ${u.username} ? Le mot de passe actuel sera invalidé.`}
+                        buttonLabel="Reset mdp"
+                        buttonClassName="btn-secondary text-xs"
+                        hiddenFields={{ id: u.id }}
+                      />
+                    </div>
                   </td>
                 </tr>
               );

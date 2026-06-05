@@ -23,6 +23,7 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   USER_PROMOTE: 'User promu admin',
   USER_DEMOTE: 'Admin rétrogradé',
   USER_ADJUST_BALANCE: 'Ajustement de solde',
+  USER_PASSWORD_RESET: 'Reset mot de passe',
 };
 
 export default async function AuditPage() {

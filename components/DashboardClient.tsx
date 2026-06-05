@@ -35,6 +35,8 @@ interface Props {
   /** True quand la page est rechargée juste après une sauvegarde de service
    *  (URL ?saved=service) — sert à afficher un petit "✓ Service enregistré". */
   serviceSaved?: boolean;
+  /** True quand on revient du /profile/password après un changement réussi. */
+  passwordChanged?: boolean;
 }
 
 const initials = (firstName: string, lastName: string) =>
@@ -71,6 +73,7 @@ export function DashboardClient({
   totalPlayers,
   updateServiceAction,
   serviceSaved,
+  passwordChanged,
 }: Props) {
   // Dédup le classement affiché : top 3 + voisins (en évitant doublons)
   const seen = new Set<string>();
@@ -202,6 +205,27 @@ export function DashboardClient({
           </Link>
         </div>
       </section>
+
+      {passwordChanged && (
+        <div className="inline-flex w-full items-center gap-2 rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+          Mot de passe mis à jour.
+        </div>
+      )}
+
+      {/* Sécurité — changement de mot de passe */}
+      <Link
+        href="/profile/password"
+        className="btn-secondary w-full justify-center"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <rect x="3" y="11" width="18" height="11" rx="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        Changer mon mot de passe
+      </Link>
 
       {/* Déconnexion */}
       <form action={logoutAction}>

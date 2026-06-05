@@ -200,7 +200,8 @@ export type AuditAction =
   | 'TOURNAMENT_SETTLE'
   | 'USER_PROMOTE'
   | 'USER_DEMOTE'
-  | 'USER_ADJUST_BALANCE';
+  | 'USER_ADJUST_BALANCE'
+  | 'USER_PASSWORD_RESET';
 
 export interface AuditEntry {
   id: string;

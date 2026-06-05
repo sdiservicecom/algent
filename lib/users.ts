@@ -101,6 +101,21 @@ export async function setUserRole(id: string, role: Role): Promise<void> {
 }
 
 /**
+ * Remplace le hash du mot de passe stocké pour cet utilisateur. À appeler
+ * uniquement avec un hash déjà calculé (bcrypt). Le contrôle de l'ancien
+ * mot de passe doit être fait en amont par l'appelant si nécessaire.
+ */
+export async function setUserPasswordHash(
+  id: string,
+  passwordHash: string,
+): Promise<void> {
+  const user = await getUser(id);
+  if (!user) throw new UserError('INVALID_INPUT');
+  if (!passwordHash) throw new UserError('INVALID_INPUT');
+  await kv.hset(K.user(id), { passwordHash });
+}
+
+/**
  * Met à jour le service de l'utilisateur. Passe `null` ou une chaîne vide
  * pour le retirer. Tronque à 60 caractères pour limiter le bruit.
  */
