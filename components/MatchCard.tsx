@@ -292,7 +292,7 @@ function PlayerSlot({
       </div>
       <div className="mt-2">{oddsButton}</div>
       {stakePct != null && (
-        <div className="mt-2 flex w-full items-center gap-2 text-[11px] font-semibold">
+        <div className="mt-2 flex w-full max-w-[110px] items-center gap-1.5 text-[11px] font-semibold">
           <span className={isFav ? 'text-success' : 'text-danger'}>
             {stakePct}%
           </span>
