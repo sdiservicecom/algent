@@ -29,14 +29,20 @@ export default async function AppLayout({
           username={user.username}
           isAdmin={user.role === 'ADMIN'}
         />
-        <div className="mx-auto md:flex md:max-w-7xl md:gap-6 md:px-6">
+        {/* En desktop, on garde la sidebar à gauche mais on RE-CENTRE
+            visuellement le contenu : main reste plafonné à max-w-2xl
+            (largeur de la version mobile, lisible) et est centré dans
+            la zone restante avec `mx-auto`. Du coup le bloc est
+            grossièrement aligné avec le milieu du viewport, sans être
+            étiré sur toute la largeur. */}
+        <div className="mx-auto md:flex md:max-w-7xl md:items-start md:gap-6 md:px-6">
           <SideNav
             username={user.username}
             balance={user.balance}
             isAdmin={user.role === 'ADMIN'}
           />
-          <main className="mx-auto w-full max-w-2xl px-4 pb-6 pt-4 md:mx-0 md:max-w-none md:flex-1 md:px-0 md:py-6">
-            {children}
+          <main className="mx-auto w-full max-w-2xl px-4 pb-6 pt-4 md:flex-1 md:px-0 md:py-6">
+            <div className="mx-auto w-full max-w-2xl">{children}</div>
           </main>
         </div>
         <FloatingBetBasket balance={user.balance} />

@@ -130,7 +130,7 @@ export function MatchCard({ match, pa, pb, winner, viewerUserId }: Props) {
         <span aria-hidden className="text-base leading-none">🏓</span>
       </header>
 
-      <div className="relative z-10 mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div className="relative z-10 mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
         <PlayerSlot
           player={pa}
           odds={match.oddsA}
@@ -276,9 +276,13 @@ function PlayerSlot({
   );
 
   return (
-    <div className="flex flex-col items-center text-center">
+    // `min-w-0` est CRITIQUE ici : sans ça, un nom long fait gonfler la
+    // colonne de la grille parente (grid-cols-[1fr_auto_1fr]) jusqu'à
+    // déborder de la viewport mobile. Avec min-w-0, la colonne respecte
+    // sa taille `1fr` et le texte truncate proprement.
+    <div className="flex min-w-0 max-w-full flex-col items-center text-center">
       <PlayerAvatar player={player} size={72} className="ring-1 ring-border" />
-      <div className="mt-2 truncate text-sm font-semibold">
+      <div className="mt-2 w-full truncate text-sm font-semibold">
         {player.firstName}
         {isMe && (
           <span className="ml-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold text-accent">

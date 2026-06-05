@@ -14,6 +14,7 @@ import {
 import { listMatchBets } from '@/lib/bets';
 import { ConfirmForm } from '@/components/admin/ConfirmForm';
 import { LiveTracker } from '@/components/admin/LiveTracker';
+import { SettleForm } from '@/components/admin/SettleForm';
 import { getPlayer, listPlayers } from '@/lib/players';
 import { getUser } from '@/lib/users';
 import { logAudit } from '@/lib/audit';
@@ -382,42 +383,17 @@ export default async function AdminMatchDetailPage({
             Les scores sont optionnels. S'ils sont renseignés, les paris avec un
             pronostic exact reçoivent un bonus égal à leur mise.
           </p>
-          <form action={settle} className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="id" value={match.id} />
-            <div className="flex-1 min-w-[200px]">
-              <label className="label">Vainqueur</label>
-              <select name="winnerId" required className="input">
-                <option value="">—</option>
-                <option value={match.playerAId}>{fmtPlayerName(pa)}</option>
-                <option value={match.playerBId}>{fmtPlayerName(pb)}</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Score {pa.firstName}</label>
-              <input
-                name="scoreA"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
-                className="input w-24 text-center text-lg font-semibold"
-              />
-            </div>
-            <div>
-              <label className="label">Score {pb.firstName}</label>
-              <input
-                name="scoreB"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
-                className="input w-24 text-center text-lg font-semibold"
-              />
-            </div>
-            <button className="btn-primary" type="submit">
-              Valider et calculer les gains
-            </button>
-          </form>
+          <SettleForm
+            matchId={match.id}
+            playerAId={match.playerAId}
+            playerBId={match.playerBId}
+            playerALabel={fmtPlayerName(pa)}
+            playerBLabel={fmtPlayerName(pb)}
+            initialScoreA={match.scoreA}
+            initialScoreB={match.scoreB}
+            initialWinnerId={match.winnerId}
+            settleAction={settle}
+          />
         </section>
       )}
 

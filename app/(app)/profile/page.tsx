@@ -6,12 +6,8 @@ import { getUser, setUserService } from '@/lib/users';
 import {
   cachedGetLeaderboard as getLeaderboard,
   cachedHasReceivedTodayBonus as hasReceivedTodayBonus,
-  cachedListPlayers as listPlayers,
 } from '@/lib/cache';
-import { getTournament } from '@/lib/tournament';
-import { getQuizState, QUIZ_REWARD } from '@/lib/quiz';
 import { DashboardClient } from '@/components/DashboardClient';
-import type { QuizPlayerOption } from '@/components/QuizCard';
 
 async function logout() {
   'use server';
@@ -41,15 +37,11 @@ export default async function ProfilePage({
 }) {
   const session = await requireUser();
   const sp = await searchParams;
-  const [user, bonus, leaderboard, players, tournament, quizState] =
-    await Promise.all([
-      getUser(session.sub),
-      hasReceivedTodayBonus(session.sub),
-      getLeaderboard(),
-      listPlayers(),
-      getTournament(),
-      getQuizState(session.sub),
-    ]);
+  const [user, bonus, leaderboard] = await Promise.all([
+    getUser(session.sub),
+    hasReceivedTodayBonus(session.sub),
+    getLeaderboard(),
+  ]);
   if (!user) return null;
 
   const myRank = leaderboard.find((r) => r.userId === session.sub);
@@ -58,37 +50,11 @@ export default async function ProfilePage({
     ? leaderboard.slice(Math.max(0, myRank.rank - 2), myRank.rank + 1)
     : [];
 
-  // Construit la liste d'options du quiz : gagnant + 3 distracteurs aléatoires,
-  // mélangé. Déterministe à partir du userId pour rester stable entre les
-  // rechargements (sinon les boutons sautent à chaque refresh).
-  const winnerId = tournament.winnerId;
-  let quizOptions: QuizPlayerOption[] = [];
-  if (winnerId) {
-    const winner = players.find((p) => p.id === winnerId);
-    const others = players.filter((p) => p.id !== winnerId);
-    const seed = hashCode(session.sub);
-    const shuffled = seededShuffle(others, seed);
-    const distractors = shuffled.slice(0, 3);
-    const pool = winner ? [winner, ...distractors] : distractors;
-    quizOptions = seededShuffle(pool, seed + 1).map((p) => ({
-      id: p.id,
-      firstName: p.firstName,
-      lastName: p.lastName,
-    }));
-  }
-
   return (
     <DashboardClient
       logoutAction={logout}
       updateServiceAction={updateService}
       serviceSaved={sp.saved === 'service'}
-      quiz={{
-        state: quizState,
-        tournamentSettled: tournament.status === 'SETTLED',
-        options: quizOptions,
-        correctPlayerId: winnerId,
-        reward: QUIZ_REWARD,
-      }}
       modalPayload={null}
       user={{
         username: user.username,
@@ -118,32 +84,6 @@ export default async function ProfilePage({
       totalPlayers={leaderboard.length}
     />
   );
-}
-
-// — Helpers de mélange déterministe (pour un quiz stable entre rechargements) —
-function hashCode(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h * 31 + s.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  // PRNG simple (mulberry32) — assez bon pour mélanger 8 items.
-  let t = seed >>> 0;
-  const rand = () => {
-    t = (t + 0x6d2b79f5) >>> 0;
-    let r = Math.imul(t ^ (t >>> 15), 1 | t);
-    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
-    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-  };
-  const out = arr.slice();
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
 }
 
 export const dynamic = 'force-dynamic';

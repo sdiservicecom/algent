@@ -5,7 +5,6 @@ import { ResultModal, type ResultPayload } from './ResultModal';
 import { CoinIcon } from './CoinIcon';
 import { BonusCTA } from './BonusCTA';
 import { ServiceSelect } from './ServiceSelect';
-import { QuizCard, type QuizPlayerOption } from './QuizCard';
 import { fmtPoints } from '@/lib/format';
 
 interface RankRow {
@@ -36,14 +35,6 @@ interface Props {
   /** True quand la page est rechargée juste après une sauvegarde de service
    *  (URL ?saved=service) — sert à afficher un petit "✓ Service enregistré". */
   serviceSaved?: boolean;
-  /** Données pour la carte quiz "Qui a gagné le dernier tournoi ?". */
-  quiz?: {
-    state: 'idle' | 'won' | 'lost';
-    tournamentSettled: boolean;
-    options: QuizPlayerOption[];
-    correctPlayerId: string | null;
-    reward: number;
-  };
 }
 
 const initials = (firstName: string, lastName: string) =>
@@ -80,7 +71,6 @@ export function DashboardClient({
   totalPlayers,
   updateServiceAction,
   serviceSaved,
-  quiz,
 }: Props) {
   // Dédup le classement affiché : top 3 + voisins (en évitant doublons)
   const seen = new Set<string>();
@@ -134,19 +124,6 @@ export function DashboardClient({
           action={updateServiceAction}
           justSaved={!!serviceSaved}
         />
-      )}
-
-      {/* Question pour du pognon — quiz dernier gagnant du tournoi */}
-      {quiz ? (
-        <QuizCard
-          initialState={quiz.state}
-          tournamentSettled={quiz.tournamentSettled}
-          options={quiz.options}
-          correctPlayerId={quiz.correctPlayerId}
-          reward={quiz.reward}
-        />
-      ) : (
-        <QuestionCard />
       )}
 
       {/* Classement */}
@@ -292,37 +269,3 @@ function ServiceEditor({
   );
 }
 
-function QuestionCard() {
-  // Placeholder visuel — la mécanique réelle est gérée par le bonus quotidien.
-  return (
-    <section className="rounded-3xl border border-accent/40 bg-surface/80 p-4">
-      <div className="mb-2 flex items-center gap-2 text-fg/70">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="11" cy="11" r="7" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
-        <span className="text-sm font-semibold">Question pour du pognon</span>
-      </div>
-      <p className="mb-4 text-center text-base font-bold">
-        Qui va remporter le tournoi de ping-pong ?
-      </p>
-      <div className="mb-4 flex flex-wrap justify-center gap-2">
-        <Link
-          href="/tournament"
-          className="rounded-full border border-accent/60 px-4 py-1.5 text-sm font-semibold text-accent hover:bg-accent/10"
-        >
-          Faire mon pronostic
-        </Link>
-      </div>
-      <Link
-        href="/tournament"
-        className="btn-primary w-full"
-      >
-        Confirmer ma réponse
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M5 13l4 4L19 7" />
-        </svg>
-      </Link>
-    </section>
-  );
-}
