@@ -216,7 +216,14 @@ export default async function AdminMatchDetailPage({
     listPlayers(),
   ]);
   if (!pa || !pb) notFound();
-  const isEditable = match.status === 'SCHEDULED';
+  // Reprogrammer = autorisé tant que le match n'est pas réglé / annulé /
+  // déjà fini. Swap de joueurs = uniquement avant l'ouverture des paris
+  // (sinon les paris déjà posés deviendraient incohérents).
+  const canReschedule =
+    match.status !== 'FINISHED' &&
+    match.status !== 'SETTLED' &&
+    match.status !== 'CANCELLED';
+  const canSwapPlayers = match.status === 'SCHEDULED';
   // Prefill du <input type="datetime-local"> : on doit lui donner l'heure
   // affichée dans APP_TZ (et NON la chaîne ISO UTC), sinon l'admin voit
   // une heure décalée à chaque édition.
@@ -337,36 +344,54 @@ export default async function AdminMatchDetailPage({
         </div>
       )}
 
-      {isEditable && (
+      {canReschedule && (
         <section className="card">
-          <h2 className="mb-3 text-lg font-semibold">Modifier le match</h2>
+          <h2 className="mb-3 text-lg font-semibold">
+            {canSwapPlayers ? 'Modifier le match' : 'Reprogrammer le match'}
+          </h2>
           <p className="mb-3 text-xs text-fg/60">
-            Possible uniquement tant que le match est SCHEDULED (avant
-            l'ouverture des paris).
+            {canSwapPlayers
+              ? 'Tu peux ajuster la date/heure et changer les joueurs tant que le match est en SCHEDULED.'
+              : "Tu peux repousser ou avancer le coup d'envoi à tout moment tant que le match n'est pas terminé. Les paris déjà posés sont conservés."}
           </p>
-          <form action={updateBasic} className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <form
+            action={updateBasic}
+            className="grid grid-cols-1 gap-3 md:grid-cols-3"
+          >
             <input type="hidden" name="id" value={match.id} />
-            <div>
-              <label className="label">Joueur A</label>
-              <select name="playerAId" defaultValue={match.playerAId} className="input">
-                {allPlayers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    #{p.seed} · {fmtPlayerName(p)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Joueur B</label>
-              <select name="playerBId" defaultValue={match.playerBId} className="input">
-                {allPlayers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    #{p.seed} · {fmtPlayerName(p)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
+            {canSwapPlayers && (
+              <>
+                <div>
+                  <label className="label">Joueur A</label>
+                  <select
+                    name="playerAId"
+                    defaultValue={match.playerAId}
+                    className="input"
+                  >
+                    {allPlayers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        #{p.seed} · {fmtPlayerName(p)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Joueur B</label>
+                  <select
+                    name="playerBId"
+                    defaultValue={match.playerBId}
+                    className="input"
+                  >
+                    {allPlayers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        #{p.seed} · {fmtPlayerName(p)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+            <div className={canSwapPlayers ? '' : 'md:col-span-3'}>
               <label className="label">Date & heure</label>
               <input
                 name="startsAt"

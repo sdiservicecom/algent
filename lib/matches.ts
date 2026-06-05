@@ -536,9 +536,24 @@ export async function updateMatch(
 ): Promise<void> {
   const match = await getMatch(matchId);
   if (!match) throw new MatchError('MATCH_NOT_FOUND');
-  if (match.status !== 'SCHEDULED') {
-    // Modification interdite après ouverture aux paris : il y a peut-être déjà
-    // des mises avec des cotes figées sur la base des seeds initiaux.
+
+  // On bloque toute modif après FINISHED — la suite (SETTLED/CANCELLED)
+  // est immuable côté wallet. Avant ça, on autorise :
+  //  - Changer la date/heure : toujours possible tant que pas réglé
+  //    (utile pour repousser le coup d'envoi).
+  //  - Changer les joueurs : seulement en SCHEDULED, parce que les paris
+  //    déjà posés sont indexés sur ces playerIds.
+  if (
+    match.status === 'FINISHED' ||
+    match.status === 'SETTLED' ||
+    match.status === 'CANCELLED'
+  ) {
+    throw new MatchError('INVALID_TRANSITION');
+  }
+  const wantsPlayerChange =
+    (input.playerAId && input.playerAId !== match.playerAId) ||
+    (input.playerBId && input.playerBId !== match.playerBId);
+  if (wantsPlayerChange && match.status !== 'SCHEDULED') {
     throw new MatchError('INVALID_TRANSITION');
   }
 
