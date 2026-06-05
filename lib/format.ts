@@ -1,3 +1,5 @@
+import { APP_TZ } from './datetime';
+
 export const fmtPoints = (n: number) =>
   new Intl.NumberFormat('fr-FR').format(n);
 
@@ -10,6 +12,7 @@ export const fmtDateTime = (d: Date | string) =>
   new Intl.DateTimeFormat('fr-FR', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: APP_TZ,
   }).format(typeof d === 'string' ? new Date(d) : d);
 
 interface NameLike {

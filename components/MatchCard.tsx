@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useBasket } from './BasketContext';
 import { PlayerAvatar } from './PlayerAvatar';
 import { fmtOdds } from '@/lib/format';
+import { APP_TZ } from '@/lib/datetime';
 
 const fmtShortDate = (d: string) =>
   new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
     month: 'short',
+    timeZone: APP_TZ,
   })
     .format(new Date(d))
     .replace('.', '');
@@ -17,6 +19,7 @@ const fmtTime = (d: string) =>
   new Intl.DateTimeFormat('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: APP_TZ,
   }).format(new Date(d));
 import {
   MATCH_ROUND_LABEL,

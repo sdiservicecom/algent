@@ -20,6 +20,10 @@ import { getUser } from '@/lib/users';
 import { logAudit } from '@/lib/audit';
 import { bumpCache } from '@/lib/cache';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
+import {
+  parseLocalDatetimeInput,
+  toLocalDatetimeInput,
+} from '@/lib/datetime';
 
 async function open(formData: FormData) {
   'use server';
@@ -172,7 +176,8 @@ async function updateBasic(formData: FormData) {
   const startsAtRaw = String(formData.get('startsAt') ?? '');
   const playerAId = String(formData.get('playerAId') ?? '') || undefined;
   const playerBId = String(formData.get('playerBId') ?? '') || undefined;
-  const startsAt = startsAtRaw ? new Date(startsAtRaw) : undefined;
+  // datetime-local en heure locale APP_TZ → Date UTC absolue (cf. createMatchAction).
+  const startsAt = startsAtRaw ? parseLocalDatetimeInput(startsAtRaw) : undefined;
   if (startsAt && Number.isNaN(startsAt.getTime())) {
     return redirect(`/admin/matches/${id}?error=date`);
   }
@@ -212,7 +217,10 @@ export default async function AdminMatchDetailPage({
   ]);
   if (!pa || !pb) notFound();
   const isEditable = match.status === 'SCHEDULED';
-  const startsLocal = new Date(match.startsAt).toISOString().slice(0, 16);
+  // Prefill du <input type="datetime-local"> : on doit lui donner l'heure
+  // affichée dans APP_TZ (et NON la chaîne ISO UTC), sinon l'admin voit
+  // une heure décalée à chaque édition.
+  const startsLocal = toLocalDatetimeInput(match.startsAt);
 
   const userIds = Array.from(new Set(bets.map((b) => b.userId)));
   const users = Object.fromEntries(

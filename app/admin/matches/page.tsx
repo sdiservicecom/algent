@@ -14,6 +14,7 @@ import {
   cachedListPlayers as listPlayers,
 } from '@/lib/cache';
 import { logAudit } from '@/lib/audit';
+import { parseLocalDatetimeInput } from '@/lib/datetime';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import {
   MATCH_ROUNDS,
@@ -98,7 +99,11 @@ async function createMatchAction(formData: FormData) {
   if (!playerAId || !playerBId || playerAId === playerBId || !startsAtRaw) {
     return redirect('/admin/matches?error=validation');
   }
-  const startsAt = new Date(startsAtRaw);
+  // <input type="datetime-local"> renvoie une heure locale "naïve" sans
+  // fuseau (ex: "2024-12-15T14:00"). On l'interprète comme l'heure
+  // affichée à l'utilisateur (APP_TZ = Europe/Paris) et on convertit
+  // vers une Date UTC absolue pour le stockage.
+  const startsAt = parseLocalDatetimeInput(startsAtRaw);
   if (Number.isNaN(startsAt.getTime())) {
     return redirect('/admin/matches?error=validation');
   }
