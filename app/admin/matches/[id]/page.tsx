@@ -189,9 +189,11 @@ async function updateBasic(formData: FormData) {
     targetId: id,
     metadata: { startsAt: startsAtRaw, playerAId, playerBId },
   });
+  bumpCache('matches');
   revalidatePath(`/admin/matches/${id}`);
   revalidatePath('/matches');
   revalidatePath('/bracket');
+  revalidatePath('/dashboard');
   redirect(`/admin/matches/${id}?ok=1`);
 }
 

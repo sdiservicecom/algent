@@ -7,6 +7,7 @@ import {
   deleteMatch,
   listMatches as rawListMatches,
   transitionMatchStatus,
+  updateMatch,
 } from '@/lib/matches';
 import {
   bumpCache,
@@ -14,7 +15,10 @@ import {
   cachedListPlayers as listPlayers,
 } from '@/lib/cache';
 import { logAudit } from '@/lib/audit';
-import { parseLocalDatetimeInput } from '@/lib/datetime';
+import {
+  parseLocalDatetimeInput,
+  toLocalDatetimeInput,
+} from '@/lib/datetime';
 import { fmtDateTime, fmtOdds, fmtPlayerName, fmtPoints } from '@/lib/format';
 import {
   MATCH_ROUNDS,
@@ -62,6 +66,35 @@ async function purgeFinishedAction() {
   revalidatePath('/bracket');
   revalidatePath('/leaderboard');
   redirect(`/admin/matches?purged=${targets.length}`);
+}
+
+async function rescheduleMatchAction(formData: FormData) {
+  'use server';
+  const session = await requireAdmin();
+  const id = String(formData.get('id'));
+  const raw = String(formData.get('startsAt') ?? '');
+  const startsAt = raw ? parseLocalDatetimeInput(raw) : null;
+  if (!startsAt || Number.isNaN(startsAt.getTime())) {
+    return redirect('/admin/matches?error=date');
+  }
+  try {
+    await updateMatch(id, { startsAt });
+  } catch {
+    return redirect('/admin/matches?error=invalid-status');
+  }
+  await logAudit({
+    adminId: session.sub,
+    adminUsername: session.username,
+    action: 'MATCH_UPDATE',
+    targetId: id,
+    metadata: { startsAt: raw, source: 'inline-list' },
+  });
+  bumpCache('matches');
+  revalidatePath('/admin/matches');
+  revalidatePath('/matches');
+  revalidatePath('/bracket');
+  revalidatePath('/dashboard');
+  redirect(`/admin/matches?rescheduled=${id}`);
 }
 
 async function openAllScheduledAction() {
@@ -131,6 +164,7 @@ export default async function AdminMatchesPage({
     purged?: string;
     deleted?: string;
     opened?: string;
+    rescheduled?: string;
   }>;
 }) {
   await requireAdmin();
@@ -170,6 +204,22 @@ export default async function AdminMatchesPage({
       {sp.opened && (
         <div className="card border-success/40 text-sm text-success">
           ✓ {sp.opened} match(s) ouverts aux paris.
+        </div>
+      )}
+      {sp.rescheduled && (
+        <div className="card border-success/40 text-sm text-success">
+          ✓ Match reprogrammé.
+        </div>
+      )}
+      {sp.error === 'date' && (
+        <div className="card border-danger/40 text-sm text-danger">
+          Date invalide.
+        </div>
+      )}
+      {sp.error === 'invalid-status' && (
+        <div className="card border-danger/40 text-sm text-danger">
+          Impossible de reprogrammer : le match est déjà réglé, annulé
+          ou terminé.
         </div>
       )}
       {sp.purged && (
@@ -271,7 +321,33 @@ export default async function AdminMatchesPage({
               return (
                 <tr key={m.id} className="border-b border-border/50">
                   <td data-label="Date" className="px-3 py-2 text-fg/60">
-                    {fmtDateTime(m.startsAt)}
+                    {/* Affichage + édition inline. La date stockée
+                        en UTC est formatée pour le datetime-local en
+                        heure Europe/Paris via toLocalDatetimeInput, et
+                        le submit la repasse en UTC via parseLocal-
+                        DatetimeInput côté action. */}
+                    <form
+                      action={rescheduleMatchAction}
+                      className="flex items-center gap-2"
+                    >
+                      <input type="hidden" name="id" value={m.id} />
+                      <input
+                        name="startsAt"
+                        type="datetime-local"
+                        defaultValue={toLocalDatetimeInput(m.startsAt)}
+                        className="input !px-3 !py-1.5 text-xs"
+                      />
+                      <button
+                        type="submit"
+                        className="btn-secondary !px-3 !py-1.5 text-xs"
+                        title="Reprogrammer ce match"
+                      >
+                        OK
+                      </button>
+                    </form>
+                    <div className="mt-1 text-[11px] text-fg/40">
+                      {fmtDateTime(m.startsAt)}
+                    </div>
                   </td>
                   <td data-label="Match" className="px-3 py-2">
                     {pa ? fmtPlayerName(pa) : '?'} vs{' '}
