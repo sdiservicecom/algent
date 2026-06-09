@@ -37,6 +37,8 @@ interface Props {
   serviceSaved?: boolean;
   /** True quand on revient du /profile/password après un changement réussi. */
   passwordChanged?: boolean;
+  /** True quand on revient du /profile/username après un changement réussi. */
+  usernameChanged?: boolean;
 }
 
 const initials = (firstName: string, lastName: string) =>
@@ -74,6 +76,7 @@ export function DashboardClient({
   updateServiceAction,
   serviceSaved,
   passwordChanged,
+  usernameChanged,
 }: Props) {
   // Dédup le classement affiché : top 3 + voisins (en évitant doublons)
   const seen = new Set<string>();
@@ -214,6 +217,27 @@ export function DashboardClient({
           Mot de passe mis à jour.
         </div>
       )}
+
+      {usernameChanged && (
+        <div className="inline-flex w-full items-center gap-2 rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+          Pseudo mis à jour.
+        </div>
+      )}
+
+      {/* Sécurité — changement de pseudo */}
+      <Link
+        href="/profile/username"
+        className="btn-secondary w-full justify-center"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+        </svg>
+        Changer mon pseudo
+      </Link>
 
       {/* Sécurité — changement de mot de passe */}
       <Link

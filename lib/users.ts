@@ -101,6 +101,45 @@ export async function setUserRole(id: string, role: Role): Promise<void> {
 }
 
 /**
+ * Renomme un utilisateur. Réserve atomiquement le nouveau pseudo via
+ * `kv.set(NX)` sur l'index `username -> id` pour bloquer les courses
+ * (deux utilisateurs qui prennent le même alias en même temps), puis
+ * met à jour le hash user et nettoie l'ancien index.
+ *
+ * - INVALID_INPUT si trop court (<3 caractères)
+ * - USERNAME_TAKEN si l'alias est déjà pris
+ * - Si le nouveau pseudo n'est qu'une variation de casse de l'ancien
+ *   (alice ↔ Alice), on met juste à jour la chaîne affichée sans
+ *   toucher l'index.
+ */
+export async function setUserUsername(
+  id: string,
+  raw: string,
+): Promise<void> {
+  const trimmed = raw.trim();
+  if (trimmed.length < 3) throw new UserError('INVALID_INPUT');
+  const user = await getUser(id);
+  if (!user) throw new UserError('INVALID_INPUT');
+
+  const oldLower = user.username.toLowerCase();
+  const newLower = trimmed.toLowerCase();
+
+  if (oldLower === newLower) {
+    // Même alias en minuscule → juste rafraichir la casse affichée.
+    if (trimmed !== user.username) {
+      await kv.hset(K.user(id), { username: trimmed });
+    }
+    return;
+  }
+
+  const reserved = await kv.set(K.userByUsername(newLower), id, { nx: true });
+  if (reserved !== 'OK') throw new UserError('USERNAME_TAKEN');
+
+  await kv.hset(K.user(id), { username: trimmed });
+  await kv.del(K.userByUsername(oldLower));
+}
+
+/**
  * Remplace le hash du mot de passe stocké pour cet utilisateur. À appeler
  * uniquement avec un hash déjà calculé (bcrypt). Le contrôle de l'ancien
  * mot de passe doit être fait en amont par l'appelant si nécessaire.

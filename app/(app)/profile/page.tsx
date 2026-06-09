@@ -33,7 +33,11 @@ async function updateService(formData: FormData) {
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; passwordChanged?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    passwordChanged?: string;
+    usernameChanged?: string;
+  }>;
 }) {
   const session = await requireUser();
   const sp = await searchParams;
@@ -56,6 +60,7 @@ export default async function ProfilePage({
       updateServiceAction={updateService}
       serviceSaved={sp.saved === 'service'}
       passwordChanged={sp.passwordChanged === '1'}
+      usernameChanged={sp.usernameChanged === '1'}
       modalPayload={null}
       user={{
         username: user.username,
