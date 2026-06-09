@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getMatch } from '@/lib/matches';
 import { getPlayer } from '@/lib/players';
-import { fmtOdds, fmtPlayerName } from '@/lib/format';
+import { fmtPlayerName } from '@/lib/format';
 import { AutoRefresh } from '@/components/AutoRefresh';
 import { BrandLogo } from '@/components/BrandLogo';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
@@ -13,6 +13,10 @@ import { PlayerAvatar } from '@/components/PlayerAvatar';
  * bottom-nav (cette route est volontairement hors du groupe (app)),
  * pas d'auth (cf. middleware PUBLIC_PREFIXES), tout est en
  * gigantesque pour qu'on lise à 5 mètres.
+ *
+ * Volontairement minimaliste : seulement les joueurs et le score —
+ * pas de cote, pas de répartition de paris (l'écran sert avant tout
+ * de tableau d'affichage du match en lui-même).
  */
 export default async function LiveMatchPage({
   params,
@@ -33,10 +37,6 @@ export default async function LiveMatchPage({
   const isLive = match.status === 'IN_PROGRESS';
   const isLocked = match.status === 'LOCKED';
   const isSettled = match.status === 'SETTLED';
-
-  const total = match.betCountA + match.betCountB;
-  const pctA = total > 0 ? Math.round((match.betCountA / total) * 100) : 50;
-  const pctB = 100 - pctA;
 
   const aIsWinner = isSettled && winner?.id === pa.id;
   const bIsWinner = isSettled && winner?.id === pb.id;
@@ -76,30 +76,23 @@ export default async function LiveMatchPage({
       </header>
 
       {/* Bloc principal : joueurs + score géant */}
-      <section className="flex flex-1 flex-col items-center justify-center gap-12 py-10">
+      <section className="flex flex-1 flex-col items-center justify-center py-10">
         <div className="grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-8">
           <PlayerColumn
             player={pa}
-            odds={match.oddsA}
-            pct={pctA}
             isWinner={aIsWinner}
             isLoser={bIsWinner}
-            align="left"
           />
           <div className="flex flex-col items-center gap-4 text-center">
             <span
               className="font-mono text-7xl font-extrabold leading-none tracking-tight sm:text-8xl md:text-[9rem]"
               aria-label={`Score : ${match.scoreA ?? 0} à ${match.scoreB ?? 0}`}
             >
-              <span
-                className={aIsWinner ? 'text-accent' : ''}
-              >
+              <span className={aIsWinner ? 'text-accent' : ''}>
                 {match.scoreA ?? 0}
               </span>
               <span className="mx-3 text-fg/30 sm:mx-5">–</span>
-              <span
-                className={bIsWinner ? 'text-accent' : ''}
-              >
+              <span className={bIsWinner ? 'text-accent' : ''}>
                 {match.scoreB ?? 0}
               </span>
             </span>
@@ -113,43 +106,14 @@ export default async function LiveMatchPage({
           </div>
           <PlayerColumn
             player={pb}
-            odds={match.oddsB}
-            pct={pctB}
             isWinner={bIsWinner}
             isLoser={aIsWinner}
-            align="right"
           />
         </div>
-
-        {/* Barre de répartition des paris (pour le spectateur) */}
-        {total > 0 && (
-          <div className="w-full max-w-4xl">
-            <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-fg/55">
-              <span>Paris : {pctA}% sur {pa.firstName}</span>
-              <span>
-                {pctB}% sur {pb.firstName}
-              </span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-white/8">
-              <div className="flex h-full">
-                <div
-                  className="h-full bg-accent"
-                  style={{ width: `${pctA}%` }}
-                  aria-hidden
-                />
-                <div
-                  className="h-full bg-danger"
-                  style={{ width: `${pctB}%` }}
-                  aria-hidden
-                />
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
       <footer className="text-center text-xs text-fg/40">
-        SDI <span className="text-accentBright">Bet</span> · Cotes en temps réel
+        SDI <span className="text-accentBright">Bet</span> · Score en temps réel
       </footer>
     </main>
   );
@@ -166,14 +130,11 @@ const roundLongLabel = (r: string) => ROUND_LONG[r] ?? '';
 
 interface ColProps {
   player: { firstName: string; lastName: string; photoUrl: string | null; nickname: string | null; seed: number };
-  odds: number;
-  pct: number;
   isWinner: boolean;
   isLoser: boolean;
-  align: 'left' | 'right';
 }
 
-function PlayerColumn({ player, odds, pct, isWinner, isLoser, align }: ColProps) {
+function PlayerColumn({ player, isWinner, isLoser }: ColProps) {
   return (
     <div
       className={`flex flex-col items-center gap-4 text-center ${
@@ -203,19 +164,6 @@ function PlayerColumn({ player, odds, pct, isWinner, isLoser, align }: ColProps)
           Seed #{player.seed}
         </div>
       </div>
-      <div className="flex flex-col items-center gap-1">
-        <span className="inline-flex items-center justify-center rounded-full bg-white px-5 py-1.5 text-2xl font-bold text-black sm:text-3xl">
-          {fmtOdds(odds)}
-        </span>
-        <span className="text-xs font-semibold uppercase tracking-wider text-fg/55">
-          Cote {align === 'left' ? 'A' : 'B'}
-        </span>
-      </div>
-      {pct != null && (
-        <div className="text-xs text-fg/55">
-          {pct}% des paris
-        </div>
-      )}
     </div>
   );
 }
