@@ -129,7 +129,12 @@ const ROUND_LONG: Record<string, string> = {
 const roundLongLabel = (r: string) => ROUND_LONG[r] ?? '';
 
 interface ColProps {
-  player: { firstName: string; lastName: string; photoUrl: string | null; nickname: string | null; seed: number };
+  player: {
+    firstName: string;
+    lastName: string;
+    photoUrl: string | null;
+    nickname: string | null;
+  };
   isWinner: boolean;
   isLoser: boolean;
 }
@@ -159,9 +164,6 @@ function PlayerColumn({ player, isWinner, isLoser }: ColProps) {
       <div>
         <div className="text-3xl font-extrabold sm:text-4xl">
           {fmtPlayerName(player)}
-        </div>
-        <div className="mt-1 text-sm uppercase tracking-wider text-fg/55">
-          Seed #{player.seed}
         </div>
       </div>
     </div>
